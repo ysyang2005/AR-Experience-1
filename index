@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 模型展示 (GLB & OBJ)</title>
+    
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 15px;
+            width: 45%;
+            min-width: 350px;
+            box-sizing: border-box;
+        }
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #555;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+        }
+        /* 3D 画布样式 */
+        model-viewer, #obj-container {
+            width: 100%;
+            height: 400px;
+            background-color: #fafafa;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>3D 模型网页展示</h1>
+    
+    <div class="container">
+        <div class="card">
+            <h2>模型 1：1.glb (使用 model-viewer)</h2>
+            <model-viewer 
+                src="1.glb" 
+                alt="A 3D model of 1.glb" 
+                auto-rotate 
+                camera-controls>
+            </model-viewer>
+        </div>
+
+        <div class="card">
+            <h2>模型 2：2.obj (使用 Three.js)</h2>
+            <div id="obj-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Three.js 渲染 2.obj 的逻辑 ---
+        const container = document.getElementById('obj-container');
+        
+        // 1. 创建场景
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xfafafa);
+
+        // 2. 创建相机
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        // 3. 创建渲染器
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        // 4. 添加光照
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 7.5);
+        scene.add(dirLight);
+
+        // 5. 加载 OBJ 模型
+        let objModel;
+        const loader = new THREE.OBJLoader();
+        loader.load(
+            '2.obj', 
+            function (object) {
+                objModel = object;
+                
+                // 自动居中并调整模型大小
+                const box = new THREE.Box3().setFromObject(object);
+                const size = box.getSize(new THREE.Vector3()).length();
+                const center = box.getCenter(new THREE.Vector3());
+                
+                object.position.x += (object.position.x - center.x);
+                object.position.y += (object.position.y - center.y);
+                object.position.z += (object.position.z - center.z);
+                
+                camera.position.z = size * 1.2;
+                scene.add(object);
+            },
+            function (xhr) { console.log((xhr.loaded / xhr.total * 100) + '% loaded'); },
+            function (error) { console.error('加载 OBJ 失败', error); }
+        );
+
+        // 6. 动画循环（让 OBJ 模型像 GLB 一样自动旋转）
+        function animate() {
+            requestAnimationFrame(animate);
+            if (objModel) {
+                objModel.rotation.y += 0.01; // 自动旋转
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 7. 窗口大小自适应
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>
