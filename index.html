@@ -2,103 +2,171 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR 视频图像追踪</title>
-    
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>视频静音+BGM独立控制+永久循环</title>
     <style>
-        body {
-            margin: 0;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body { 
+            width: 100%;
+            height: 100%;
+            background: #000;
             overflow: hidden;
+            position: relative;
+            height: 100vh; 
+            height: -webkit-fill-available;
         }
-        /* AR 启动前的用户交互提示层（用于解锁视频声音） */
-        #ui-overlay {
+        
+        /* ========== 视频自适应核心修改 ========== */
+        video {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: contain; 
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 1.2s ease-out;
+        }
+        video.show { opacity: 1; }
+
+        /* ========== 按钮：增加安全区域适配（刘海屏） ========== */
+        #bgmBtn {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
+            top: calc(20px + env(safe-area-inset-top)); 
+            left: calc(20px + env(safe-area-inset-left));
             z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-family: sans-serif;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            border: none;
+            border-radius: 30px;
             cursor: pointer;
+            font-size: 16px; 
+            transition: all 0.3s;
+            -webkit-tap-highlight-color: transparent;
         }
-        #ui-overlay h2 {
-            margin-bottom: 10px;
+        #bgmBtn:hover { 
+            background: rgba(255,255,255,0.4);
+            transform: scale(1.05); 
         }
-        #ui-overlay p {
-            color: #ccc;
-            font-size: 0.9rem;
+
+        /* ========== 文字：完美弹性居中布局 ========== */
+        #tipText {
+            position: fixed;
+            bottom: calc(60px + env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9998;
+            color: #fff;
+            font-size: calc(18px + 0.5vw); 
+            letter-spacing: 2px;
+            white-space: nowrap; 
+            opacity: 0;
+            pointer-events: none;
+            cursor: pointer;
+            transition: opacity 0.3s ease-out;
+            -webkit-tap-highlight-color: transparent;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8); 
         }
+        #tipText.show { 
+            opacity: 1; 
+            pointer-events: auto;
+            animation: flicker 1.2s ease-in-out infinite alternate;
+        }
+
+        @keyframes flicker { 
+            0% { opacity: 1; } 
+            100% { opacity: 0.4; } 
+        }
+
+        /* 隐藏BGM控件，页面整洁 */
+        #bgm { display: none; }
     </style>
 </head>
 <body>
+    <button id="bgmBtn">🔊 開啟BGM</button>
+    <div id="tipText">點擊開始遊戲</div>
+    
+    <video 
+        id="video1" 
+        src="https://game-reource1.oss-cn-shenzhen.aliyuncs.com/%E8%A7%86%E9%A2%911.mp4" 
+        autoplay 
+        muted 
+        playsinline 
+        webkit-playsinline 
+        x5-video-player-type="h5-page"
+        oncanplay="this.classList.add('show')">
+    </video>
 
-    <div id="ui-overlay">
-        <h2>点击屏幕开启 AR 体验</h2>
-        <p>请允许摄像头权限，并对准识别图</p>
-    </div>
-
-    <a-scene 
-        mindar-image="imageTargetSrc: 1.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: yes;" 
-        color-space="sRGB" 
-        renderer="colorManagement: true, sortObjects: true" 
-        vr-mode-ui="enabled: false" 
-        device-orientation-permission-ui="enabled: false">
-        
-        <a-assets>
-            <video id="ar-video" src="1.mp4" preload="auto" loop="true" playsinline webkit-playsinline></video>
-        </a-assets>
-
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-        <a-entity id="example-target" mindar-image-target="targetIndex: 0">
-            <a-video 
-                src="#ar-video" 
-                position="0 0 0" 
-                rotation="0 0 0" 
-                width="1" 
-                height="1">
-            </a-video>
-        </a-entity>
-
-    </a-scene>
+    <audio 
+        id="bgm" 
+        src="https://game-reource1.oss-cn-shenzhen.aliyuncs.com/1.mp3" 
+        loop 
+        muted 
+        preload="auto">
+    </audio>
 
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const overlay = document.getElementById('ui-overlay');
-            const video = document.getElementById('ar-video');
-            const targetEntity = document.getElementById('example-target');
+        const video1 = document.getElementById('video1');
+        const bgmBtn = document.getElementById('bgmBtn');
+        const tipText = document.getElementById('tipText');
+        const bgm = document.getElementById('bgm');
+        const TARGET_PAUSE_TIME = 7.12; 
+        let isPausedAtTarget = false;
+        
+        // BGM 默认设为静音状态（true）
+        let isBgmMuted = true; 
+        let hasUserInteracted = false; 
 
-            // 1. 当用户点击遮罩层时，隐藏遮罩并静音播放一次视频（以此绕过浏览器的音频限制）
-            overlay.addEventListener('click', () => {
-                overlay.style.display = 'none';
-                video.play().then(() => {
-                    // 播放成功后立即暂停，等待图像识别成功
-                    video.pause();
-                }).catch(err => {
-                    console.log("视频播放尝试失败:", err);
-                });
-            });
+        // ========== 核心：BGM独立控制逻辑 ==========
+        bgmBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            
+            hasUserInteracted = true; 
+            isBgmMuted = !isBgmMuted;
+            bgm.muted = isBgmMuted;
+            bgmBtn.innerHTML = isBgmMuted ? '🔊 開啟BGM' : '🔇 關閉BGM';
+            
+            if(isBgmMuted) {
+                bgm.pause();
+            } else {
+                bgm.play().catch(() => {}); 
+            }
+        });
 
-            // 2. 监听 MindAR 的事件：当摄像头【识别到】图片时，播放视频
-            targetEntity.addEventListener("targetFound", event => {
-                console.log("识别成功：播放视频");
-                video.play();
-            });
+        // ========== 视频核心功能：7.12秒精准暂停 ==========
+        video1.addEventListener('timeupdate', function() {
+            if(!isPausedAtTarget && !video1.paused && video1.currentTime >= TARGET_PAUSE_TIME){
+                video1.pause();
+                video1.currentTime = TARGET_PAUSE_TIME; 
+                isPausedAtTarget = true;
+                tipText.classList.add('show'); 
+                this.removeEventListener('timeupdate', arguments.callee);
+            }
+        });
 
-            // 3. 监听 MindAR 的事件：当目标【离开】镜头视线时，暂停视频
-            targetEntity.addEventListener("targetLost", event => {
-                console.log("目标丢失：暂停视频");
-                video.pause();
-            });
+        // ========== 点击文字继续播放视频 + 触发BGM ==========
+        tipText.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            if(isPausedAtTarget){
+                tipText.classList.remove('show');
+                video1.play(); 
+                
+                if(!isBgmMuted && bgm.paused) {
+                    bgm.play().catch(()=>{});
+                }
+                isPausedAtTarget = false;
+            }
+        });
+
+        // ========== 视频播放完毕自动跳转1.html ==========
+        video1.addEventListener('ended', () => {
+            window.location.href = "1.html";
+        });
+
+        // ========== 页面加载后的逻辑 ==========
+        window.addEventListener('load', () => {
+            bgm.volume = 1; 
+            bgm.play().catch(()=>{}); 
         });
     </script>
 </body>
