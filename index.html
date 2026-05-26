@@ -3,107 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>30个 GLB 模型并列展示</title>
+    <title>MindAR 视频图像追踪</title>
     
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
     <style>
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
             margin: 0;
-            padding: 30px;
-            background-color: #f0f2f5;
+            overflow: hidden;
+        }
+        /* AR 启动前的用户交互提示层（用于解锁视频声音） */
+        #ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
             display: flex;
             flex-direction: column;
+            justify-content: center;
             align-items: center;
+            color: white;
+            font-family: sans-serif;
+            cursor: pointer;
         }
-
-        h1 {
-            color: #1a1a1a;
-            margin-bottom: 5px;
+        #ui-overlay h2 {
+            margin-bottom: 10px;
         }
-
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-        }
-
-        /* 网格布局：核心部分 */
-        .grid-container {
-            display: grid;
-            /* 自动适应屏幕宽度，每个模型盒子最小 220px，自动充满整行 */
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 20px; /* 盒子之间的间距 */
-            width: 100%;
-            max-width: 1400px; /* 最大显示宽度 */
-        }
-
-        /* 单个模型卡片样式 */
-        .model-card {
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: transform 0.2s ease;
-        }
-
-        /* 鼠标悬停时的小动效 */
-        .model-card:hover {
-            transform: translateY(-5px);
-        }
-
-        /* 3D 标签样式 */
-        model-viewer {
-            width: 100%;
-            height: 220px; /* 每个模型的高度 */
-            background-color: #fdfdfd;
-            border-radius: 8px;
-        }
-
-        .model-label {
-            margin-top: 10px;
-            font-size: 0.85rem;
-            color: #888;
-            font-weight: 500;
+        #ui-overlay p {
+            color: #ccc;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
 
-    <h1>3D 模型矩阵展示</h1>
-    <div class="subtitle">正在并行渲染 30 个 1.glb 模型</div>
-    
-    <div class="grid-container" id="modelGrid"></div>
+    <div id="ui-overlay">
+        <h2>点击屏幕开启 AR 体验</h2>
+        <p>请允许摄像头权限，并对准识别图</p>
+    </div>
+
+    <a-scene 
+        mindar-image="imageTargetSrc: 1.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: yes;" 
+        color-space="sRGB" 
+        renderer="colorManagement: true, sortObjects: true" 
+        vr-mode-ui="enabled: false" 
+        device-orientation-permission-ui="enabled: false">
+        
+        <a-assets>
+            <video id="ar-video" src="1.mp4" preload="auto" loop="true" playsinline webkit-playsinline></video>
+        </a-assets>
+
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+        <a-entity id="example-target" mindar-image-target="targetIndex: 0">
+            <a-video 
+                src="#ar-video" 
+                position="0 0 0" 
+                rotation="0 0 0" 
+                width="1" 
+                height="1">
+            </a-video>
+        </a-entity>
+
+    </a-scene>
 
     <script>
-        // 获取容器
-        const gridContainer = document.getElementById('modelGrid');
-        
-        // 循环 30 次，动态生成模型标签
-        for (let i = 1; i <= 30; i++) {
-            // 创建卡片外壳
-            const card = document.createElement('div');
-            card.className = 'model-card';
+        document.addEventListener("DOMContentLoaded", () => {
+            const overlay = document.getElementById('ui-overlay');
+            const video = document.getElementById('ar-video');
+            const targetEntity = document.getElementById('example-target');
 
-            // 配置 model-viewer 的属性
-            // auto-rotate: 自动旋转 | camera-controls: 允许鼠标控制 | loading="lazy": 延迟加载提高性能
-            card.innerHTML = `
-                <model-viewer 
-                    src="1.glb" 
-                    alt="Model 1.glb - ${i}" 
-                    auto-rotate 
-                    camera-controls
-                    loading="lazy">
-                </model-viewer>
-                <div class="model-label">模型 #${i}</div>
-            `;
+            // 1. 当用户点击遮罩层时，隐藏遮罩并静音播放一次视频（以此绕过浏览器的音频限制）
+            overlay.addEventListener('click', () => {
+                overlay.style.display = 'none';
+                video.play().then(() => {
+                    // 播放成功后立即暂停，等待图像识别成功
+                    video.pause();
+                }).catch(err => {
+                    console.log("视频播放尝试失败:", err);
+                });
+            });
 
-            // 塞入网格中
-            gridContainer.appendChild(card);
-        }
+            // 2. 监听 MindAR 的事件：当摄像头【识别到】图片时，播放视频
+            targetEntity.addEventListener("targetFound", event => {
+                console.log("识别成功：播放视频");
+                video.play();
+            });
+
+            // 3. 监听 MindAR 的事件：当目标【离开】镜头视线时，暂停视频
+            targetEntity.addEventListener("targetLost", event => {
+                console.log("目标丢失：暂停视频");
+                video.pause();
+            });
+        });
     </script>
 </body>
 </html>
