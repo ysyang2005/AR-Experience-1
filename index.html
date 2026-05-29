@@ -3,30 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR I miss U</title>
-    <!-- 引入 A-Frame 和 MindAR -->
+    <title>AR I miss U - Stable Version</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        /* 載入畫面（Scanning 提示）的美化 */
-        .mindar-ui-scanning {
-            background: rgba(0, 0, 0, 0.5) !important;
-        }
+        body { margin: 0; overflow: hidden; }
     </style>
 </head>
 <body>
 
-    <!-- 
-      mindar-image 屬性中指定你的 1.mind 檔案
-      missedInterval 設為 1000 讓畫面在短暫失焦時保持字體穩定
-    -->
     <a-scene 
-        mindar-image="imageTargetSrc: ./1.mind; missInterval: 1000;" 
+        mindar-image="imageTargetSrc: ./1.mind; missInterval: 1000; filterMinCF: 0.0001; filterBeta: 0.001;" 
         color-space="sRGB" 
         renderer="colorManagement: true, physicallyCorrectLights: true" 
         vr-mode-ui="enabled: false" 
@@ -34,22 +22,7 @@
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <!-- 
-          targetIndex: 0 代表 1.mind 裡面的第一個識別目標
-          當鏡頭辨識到該圖片時，裡面的內容就會顯示出來
-        -->
         <a-entity mindar-image-target="targetIndex: 0">
-            
-            <!-- 
-              藝術字體部分：
-              - 使用 a-text 來呈現文字
-              - value: 顯示的文字
-              - font: 內建的藝術風 font (mozillavr)
-              - color: 粉紅/玫瑰金色調
-              - width: 文字大小
-              - position: 置中並稍微往前浮現 (Z軸)
-              - animation: 加上輕微的上下漂浮呼吸效果，讓它更有儀式感
-            -->
             <a-text 
                 value="I miss U" 
                 font="mozillavr"
@@ -57,13 +30,10 @@
                 align="center" 
                 width="4" 
                 position="0 0 0.2"
-                animation="property: position; to: 0 0.1 0.2; dir: alternate; dur: 1500; loop: true; easing: easeInOutSine">
+                animation="property: position; to: 0 0.05 0.2; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine">
             </a-text>
 
-            <!-- 可選：為文字加上一個淡淡的發光背景底襯，讓字體更顯眼 -->
             <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
-            <a-light type="directional" position="0 1 1" intensity="0.5"></a-light>
-
         </a-entity>
     </a-scene>
 
