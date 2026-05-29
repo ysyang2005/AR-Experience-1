@@ -3,13 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR I miss U - Stable Version</title>
+    <title>AR I miss U - Stable & Interactive</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
         body { margin: 0; overflow: hidden; }
+        /* 隱藏 A-Frame 預設的 VR 按鈕 */
+        .a-enter-vr { display: none; }
     </style>
+
+    <script>
+        // 1. 自訂一個「逐字顯示（打字機效果）」的組件
+        AFRAME.registerComponent('typewriter', {
+            schema: {
+                text: {type: 'string', default: ''},
+                speed: {type: 'number', default: 200} // 每個字出現的間隔時間（毫秒）
+            },
+            init: function () {
+                this.el.setAttribute('value', '');
+                this.currentText = '';
+                this.index = 0;
+                this.isTyping = false;
+
+                // 監聽辨識圖被「找到」的事件
+                this.el.sceneEl.addEventListener('targetFound', () => {
+                    if (!this.isTyping) {
+                        this.startTypewriter();
+                    }
+                });
+
+                // 監聽辨識圖「丟失」的事件（可選：丟失時重置，這樣下次看到可以重新打字）
+                this.el.sceneEl.addEventListener('targetLost', () => {
+                    this.resetTypewriter();
+                });
+            },
+            startTypewriter: function() {
+                this.isTyping = true;
+                this.timer = setInterval(() => {
+                    if (this.index < this.data.text.length) {
+                        this.currentText += this.data.text[this.index];
+                        this.el.setAttribute('value', this.currentText);
+                        this.index++;
+                    } else {
+                        clearInterval(this.timer);
+                    }
+                }, this.data.speed);
+            },
+            resetTypewriter: function() {
+                clearInterval(this.timer);
+                this.index = 0;
+                this.currentText = '';
+                this.el.setAttribute('value', '');
+                this.isTyping = false;
+            }
+        });
+
+        // 2. 自訂一個「點擊跳轉網頁」的組件
+        AFRAME.registerComponent('clickable-url', {
+            schema: {
+                url: {type: 'string', default: ''}
+            },
+            init: function () {
+                this.el.addEventListener('click', () => {
+                    // 在新分頁打開小紅書網址
+                    window.open(this.data.url, '_blank');
+                });
+            }
+        });
+    </script>
 </head>
 <body>
 
@@ -20,18 +82,31 @@
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
         
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        <a-camera position="0 0 0" look-controls="enabled: false">
+            <a-cursor raycaster="objects: .clickable" fuse="false"></a-cursor>
+        </a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
-            <a-text 
-                value="I miss U" 
-                font="mozillavr"
-                color="#FF4081" 
-                align="center" 
-                width="4" 
-                position="0 0 0.2"
-                animation="property: position; to: 0 0.05 0.2; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine">
-            </a-text>
+            
+            <a-entity position="0.8 0 0.1" class="clickable" clickable-url="url: https://www.xiaohongshu.com/user/profile/61c2f91d000000001000fd66?xsec_token=AB3bAk7H6mRvb92kJMgvc7FXIzjUrNQcTUXdtqF53OC0Q%3D&xsec_source=pc_search">
+                
+                <a-plane 
+                    width="1.8" 
+                    height="0.6" 
+                    material="color: #ffffff; opacity: 0.4; transparent: true; roughness: 0.1; metalness: 0.1"
+                    position="0 0 0">
+                </a-plane>
+
+                <a-text 
+                    typewriter="text: I miss U; speed: 250"
+                    font="mozillavr"
+                    color="#FF4081" 
+                    align="center" 
+                    width="4.5" 
+                    position="0 -0.02 0.01">
+                </a-text>
+
+            </a-entity>
 
             <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
         </a-entity>
