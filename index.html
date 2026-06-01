@@ -1,75 +1,267 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR I miss U - Stable & Interactive</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    
+    <title>镜海字盘 - 观测者终端</title>
     <style>
-        body {
+        * {
             margin: 0;
-            overflow: hidden;
+            padding: 0;
+            box-sizing: border-box;
         }
-        /* 隱藏 A-Frame 預設的 VR 按鈕 */
-        .a-enter-vr {
-            display: none;
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace, "Microsoft YaHei";
+        }
+
+        /* 统一画布：用于黑客帝国/高盛数据流 */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        /* 终端容器 */
+        .terminal-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* 绿光标闪烁阶段 */
+        .boot-screen {
+            position: absolute;
+            color: #00ff00;
+            font-size: 24px;
+            text-shadow: 0 0 5px #00ff00;
+            display: block;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 12px;
+            height: 24px;
+            background-color: #00ff00;
+            animation: blink 0.8s infinite;
+        }
+
+        @keyframes blink {
+            0%, 49% { background-color: #00ff00; box-shadow: 0 0 5px #00ff00; }
+            50%, 100% { background-color: transparent; box-shadow: none; }
+        }
+
+        /* 复古金色罗盘 UI */
+        .compass-ui {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            border: 2px dashed #ffd700;
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(0.8) rotate(-45deg);
+            transition: all 2s cubic-bezier(0.1, 0.8, 0.2, 1);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+            margin-bottom: 40px;
+        }
+
+        .compass-ui::before, .compass-ui::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+        }
+
+        /* 内圈金色丝线 */
+        .compass-ui::before {
+            width: 85%;
+            height: 85%;
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            animation: spinClockwise 20s linear infinite;
+        }
+
+        /* 刻度与指针 */
+        .compass-ui::after {
+            width: 10%;
+            height: 10%;
+            background: #ffd700;
+            box-shadow: 0 0 15px #ffd700;
+        }
+
+        .compass-line {
+            position: absolute;
+            top: 0; left: 50%; width: 1px; height: 100%;
+            background: linear-gradient(to bottom, #ffd700, transparent 40%, transparent 60%, #ffd700);
+        }
+        .compass-line.horiz {
+            top: 50%; left: 0; width: 100%; height: 1px;
+            background: linear-gradient(to right, #ffd700, transparent 40%, transparent 60%, #ffd700);
+        }
+
+        @keyframes spinClockwise {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* 剧情文本框 */
+        .story-text {
+            color: #ffd700;
+            font-size: 18px;
+            line-height: 1.8;
+            max-width: 600px;
+            min-height: 150px;
+            text-align: center;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+            letter-spacing: 2px;
+        }
+
+        /* 触发激活后的样式 */
+        .active-data canvas {
+            opacity: 0.25;
+        }
+        .active-compass .compass-ui {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
         }
     </style>
-
-    <script>
-        // 註冊一個自訂組件，用來處理點擊事件
-        AFRAME.registerComponent('clickable-url', {
-            schema: {
-                url: {type: 'string'}
-            },
-            init: function () {
-                const el = this.el;
-                const url = this.data.url;
-
-                // 監聽點擊事件
-                el.addEventListener('click', function () {
-                    // 在新視窗中打開網址
-                    window.open(url, '_blank');
-                });
-            }
-        });
-    </script>
 </head>
 <body>
 
-    <a-scene 
-        mindar-image="imageTargetSrc: ./1.mind; missInterval: 1000; filterMinCF: 0.0001; filterBeta: 0.001;" 
-        color-space="sRGB" 
-        renderer="colorManagement: true, physicallyCorrectLights: true" 
-        vr-mode-ui="enabled: false" 
-        device-orientation-permission-ui="enabled: false">
-        
-        <a-camera position="0 0 0" look-controls="enabled: false">
-            <a-cursor raycaster="objects: .clickable" fuse="false"></a-cursor>
-        </a-camera>
+    <canvas id="dataStream"></canvas>
 
-        <a-entity mindar-image-target="targetIndex: 0">
+    <div class="terminal-container">
+        <div class="boot-screen" id="bootScreen">
+            <span class="cursor"></span>
+        </div>
+
+        <div class="compass-ui" id="compass">
+            <div class="compass-line"></div>
+            <div class="compass-line horiz"></div>
+        </div>
+        <div class="story-text" id="storyText"></div>
+    </div>
+
+    <script>
+        const bootScreen = document.getElementById('bootScreen');
+        const compass = document.getElementById('compass');
+        const storyText = document.getElementById('storyText');
+        const canvas = document.getElementById('dataStream');
+        const ctx = canvas.getContext('2d');
+
+        // 剧情文本配置
+        const lines = [
+            "“大航海时代，葡萄牙人的帆船在‘妈阁’停靠，他们问这里是哪，当地人说：‘妈阁’。",
+            "于是，世界地图上多了一个词——MACAU。",
+            "每一个历史节点，都是由‘文字’锚定的。",
+            "但现在，时空发生了坍塌。400年的历史碎成了一地乱码。",
+            "观测者，欢迎来到‘镜海字盘’。”"
+        ];
+
+        // 1. 初始化画布大小
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // 2. 高盛/金融科技风格复古数据流生成
+        const columns = Math.floor(canvas.width / 20);
+        const yPositions = Array(columns).fill(0);
+        // 混合金融数字与部分葡文/中文历史碎片乱码
+        const charSet = "0123456789$€£¥MACAU1557O101X88.50+2.3%--".split("");
+
+        function drawDataStream() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            <a-text 
-                id="imissu-text"
-                class="clickable"
-                clickable-url="url: https://www.xiaohongshu.com/user/profile/61c2f91d000000001000fd66?xsec_token=AB3bAk7H6mRvb92kJMgvc7FXIzjUrNQcTUXdtqF53OC0Q%3D&xsec_source=pc_search"
-                value="I miss U" 
-                font="mozillavr"
-                color="#FF4081" 
-                align="center" 
-                width="4" 
-                position="0 0 0.2"
-                animation="property: position; to: 0 0.1 0.2; dir: alternate; dur: 1500; loop: true; easing: easeInOutSine">
-            </a-text>
+            // 绿色过渡到金色的金融数据流色彩
+            ctx.fillStyle = 'rgba(0, 200, 100, 0.7)'; 
+            ctx.font = '14px "Courier New"';
 
-            <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
-            <a-light type="directional" position="0 1 1" intensity="0.5"></a-light>
+            for (let i = 0; i < yPositions.length; i++) {
+                const text = charSet[Math.floor(Math.random() * charSet.length)];
+                const x = i * 20;
+                const y = yPositions[i];
 
-        </a-entity>
-    </a-scene>
+                // 偶尔闪烁金色数据
+                if(Math.random() > 0.98) ctx.fillStyle = '#ffd700';
+                else ctx.fillStyle = 'rgba(0, 180, 80, 0.8)';
 
+                ctx.fillText(text, x, y);
+
+                if (y > canvas.height && Math.random() > 0.975) {
+                    yPositions[i] = 0;
+                } else {
+                    yPositions[i] += 20;
+                }
+            }
+        }
+
+        // 3. 核心导演工作流控制
+        let dataStreamInterval;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // 阶段 1：光标独白闪烁 2 秒后消失
+            setTimeout(() => {
+                bootScreen.style.display = 'none';
+                
+                // 阶段 2：数据流洪峰爆发
+                document.body.classList.add('active-data');
+                dataStreamInterval = setInterval(drawDataStream, 30);
+
+                // 阶段 3：3秒后数据流减速定格，罗盘由远及近显现
+                setTimeout(() => {
+                    document.body.classList.add('active-compass');
+                    // 开启打字机文本流
+                    startTypewriter();
+                }, 2500);
+
+            }, 2000);
+        });
+
+        // 4. 打字机效果（带音效感节奏）
+        let currentLine = 0;
+        let currentChar = 0;
+
+        function startTypewriter() {
+            if (currentLine < lines.length) {
+                if (currentChar < lines[currentLine].length) {
+                    storyText.innerHTML += lines[currentLine].charAt(currentChar);
+                    currentChar++;
+                    // 模拟打字机不规则速度
+                    setTimeout(startTypewriter, 50 + Math.random() * 80);
+                } else {
+                    storyText.innerHTML += "<br><br>"; // 换行
+                    currentLine++;
+                    currentChar = 0;
+                    // 句末停顿
+                    setTimeout(startTypewriter, 800);
+                }
+            } else {
+                // 文本播放完毕，数据流减缓形成静止背景
+                clearInterval(dataStreamInterval);
+                // 维持极低速的背景微动
+                setInterval(drawDataStream, 150);
+            }
+        }
+    </script>
 </body>
 </html>
