@@ -3,19 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>新中式賽博 AR - 橘子綻放 (除錯修復版)</title>
+    <title>新中式賽博 AR - 橘子綻放</title>
     
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.0/dist/mindar-image-aframe.prod.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; }
-        .mindar-ui-loading { background: rgba(11, 13, 16, 0.9) !important; color: #dfb76c !important; }
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        /* 隱藏 MindAR 預設的加載界面，可自訂 */
+        .mindar-ui-loading {
+            background: rgba(11, 13, 16, 0.9) !important;
+            color: #dfb76c !important;
+        }
+        /* 提示用戶掃描耳環的 UI */
         #scan-overlay {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999;
-            background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(5px); border: 1px solid #dfb76c;
-            color: #fff; padding: 10px 20px; font-family: sans-serif; font-size: 14px;
-            letter-spacing: 1px; border-radius: 4px; pointer-events: none; text-align: center;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(5px);
+            border: 1px solid #dfb76c;
+            color: #fff;
+            padding: 10px 20px;
+            font-family: sans-serif;
+            font-size: 14px;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            pointer-events: none;
+            text-align: center;
         }
     </style>
 </head>
@@ -24,87 +44,43 @@
     <div id="scan-overlay">請將相機對準【橙色陶瓷耳環】</div>
 
     <a-scene 
-        mindar-image="imageTargetSrc: ./earring.mind; autoStart: true; uiLoading: yes; uiScanning: yes; filterMinCF: 0.001; filterBeta: 10;" 
+        mindar-image="imageTargetSrc: ./earring.mind; autoStart: true; uiLoading: yes; uiScanning: yes;" 
         color-space="sRGB" 
-        renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true; logarithmicDepthBuffer: true;" 
+        renderer="colorManagement: true, physicallyCorrectLights" 
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-entity mindar-image-target="targetIndex: 0" id="earring-target"></a-entity>
+        <a-entity mindar-image-target="targetIndex: 0" id="earring-target">
+            
+            <a-plane 
+                id="ar-canvas-plane" 
+                position="0 0 0" 
+                rotation="0 0 0" 
+                width="1.5" 
+                height="1.5" 
+                material="shader: flat; src: #animationCanvas; transparent: true; opacity: 1;">
+            </a-plane>
 
-        <a-plane 
-            id="ar-canvas-plane" 
-            smooth-marker
-            visible="false"
-            position="0 0 0" 
-            rotation="0 0 0" 
-            width="1.5" 
-            height="1.5" 
-            material="shader: flat; src: #animationCanvas; transparent: true; opacity: 1; side: double;">
-        </a-plane>
-
+        </a-entity>
     </a-scene>
 
     <canvas id="animationCanvas" style="display: none;"></canvas>
 
     <script>
-        // --- A-Frame 平滑濾波組件 (修正版) ---
-        AFRAME.registerComponent('smooth-marker', {
-            init: function () {
-                this.target = document.getElementById('earring-target');
-                this.lerpFactor = 0.22; // 微調稍微調大一點，加快初始跟隨速度
-                
-                this.prevPosition = new THREE.Vector3();
-                this.prevQuaternion = new THREE.Quaternion();
-                this.firstFound = true;
-            },
-            tick: function () {
-                if (!isTracking) {
-                    this.firstFound = true;
-                    this.el.setAttribute('visible', false); // 遺失目標時隱藏
-                    return;
-                }
-
-                const targetObj = this.target.object3D;
-                const currentObj = this.el.object3D;
-
-                // 修復點 2：當剛識別到時，強迫立即顯示並複製所有空間矩陣
-                if (this.firstFound) {
-                    targetObj.updateMatrixWorld(); // 強制更新 MindAR 的世界座標
-                    currentObj.position.copy(targetObj.position);
-                    currentObj.quaternion.copy(targetObj.quaternion);
-                    
-                    this.prevPosition.copy(targetObj.position);
-                    this.prevQuaternion.copy(targetObj.quaternion);
-                    
-                    this.el.setAttribute('visible', true); // 確保顯示
-                    this.firstFound = false;
-                    return;
-                }
-
-                // 平滑跟隨插值
-                currentObj.position.lerpVectors(this.prevPosition, targetObj.position, this.lerpFactor);
-                this.prevPosition.copy(currentObj.position);
-
-                THREE.Quaternion.slerp(this.prevQuaternion, targetObj.quaternion, currentObj.quaternion, this.lerpFactor);
-                this.prevQuaternion.copy(currentObj.quaternion);
-            }
-        });
-
-        // --- 核心控制中心 ---
+        // --- 核心控制中心（完全保留並適配你的 Canvas 代碼） ---
         const canvas = document.getElementById('animationCanvas');
         const ctx = canvas.getContext('2d');
 
-        const size = 512;
+        // 固定 Canvas 分辨率（提供給 AR 貼圖高清晰度）
+        const size = 600;
         canvas.width = size;
         canvas.height = size;
 
-        const scaleRatio = size / 600;
         const centerX = size / 2;
-        const centerY = (size / 2 + 50) * scaleRatio;
-        const orangeRadius = 50 * scaleRatio;
+        const centerY = size / 2 + 50;
+        const orangeRadius = 50;
 
         let globalTime = 0;
         const STAGE_GLOW = 0;      
@@ -117,7 +93,7 @@
         let flowers = [];
         let textAlpha = 0;
         let textYOffset = 0;
-        let isTracking = false; 
+        let isTracking = false; // 用於判斷現實中是否正對準耳環
 
         function initBlooms() {
             flowers = [];
@@ -125,21 +101,21 @@
             for (let i = 0; i < 6; i++) {
                 flowers.push({
                     angle: (Math.PI * 2 / 6) * i,
-                    maxSize: (15 + Math.random() * 10) * scaleRatio,
+                    maxSize: 15 + Math.random() * 10,
                     currentSize: 0,
-                    speed: (0.4 + Math.random() * 0.3) * scaleRatio,
+                    speed: 0.4 + Math.random() * 0.3,
                     color: i % 2 === 0 ? '#fff5f5' : '#ffd3d3'
                 });
             }
             for (let i = 0; i < 60; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const speed = (1.5 + Math.random() * 3) * scaleRatio;
+                const speed = 1.5 + Math.random() * 3;
                 particles.push({
                     x: centerX,
                     y: centerY,
                     vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed - (1 * scaleRatio), 
-                    radius: (1.5 + Math.random() * 2) * scaleRatio,
+                    vy: Math.sin(angle) * speed - 1, 
+                    radius: 1.5 + Math.random() * 2,
                     color: `hsl(${Math.random() * 40 + 20}, 100%, 70%)`, 
                     alpha: 1,
                     decay: 0.015 + Math.random() * 0.02
@@ -150,31 +126,35 @@
         function drawEarringHook() {
             ctx.save();
             ctx.strokeStyle = '#d4af37'; 
-            ctx.lineWidth = 3 * scaleRatio;
+            ctx.lineWidth = 3;
             ctx.lineCap = 'round';
-            ctx.shadowBlur = 4 * scaleRatio;
+            ctx.shadowBlur = 4;
             ctx.shadowColor = 'rgba(212, 175, 55, 0.3)';
 
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY - orangeRadius - (50 * scaleRatio));
-            ctx.quadraticCurveTo(centerX + (15 * scaleRatio), centerY - orangeRadius - (70 * scaleRatio), centerX + (5 * scaleRatio), centerY - orangeRadius - (100 * scaleRatio));
+            ctx.moveTo(centerX, centerY - orangeRadius - 50);
+            ctx.quadraticCurveTo(centerX + 15, centerY - orangeRadius - 70, centerX + 5, centerY - orangeRadius - 100);
             ctx.stroke();
 
             ctx.beginPath();
-            ctx.arc(centerX, centerY - orangeRadius - (10 * scaleRatio), 6 * scaleRatio, 0, Math.PI * 2);
+            ctx.arc(centerX, centerY - orangeRadius - 10, 6, 0, Math.PI * 2);
             ctx.fillStyle = '#d4af37';
             ctx.fill();
             ctx.stroke();
             ctx.restore();
         }
 
+        // 核心渲染循環
         function renderARLoop() {
+            // 清除畫布，注意在 AR 中我們需要透明背景，所以清除為全透明
             ctx.clearRect(0, 0, size, size);
 
+            // 只有當 AR 識別到耳環時，動畫才開始走時間軸
             if (isTracking) {
                 globalTime++;
             }
 
+            // 判定動畫進行階段
             if (globalTime <= 120) currentStage = STAGE_GLOW;
             else if (globalTime > 120 && globalTime <= 240) currentStage = STAGE_PEEL;
             else if (globalTime > 240 && globalTime <= 340) {
@@ -185,7 +165,7 @@
 
             drawEarringHook();
 
-            let glowBlur = (10 + Math.sin(globalTime * 0.05) * 6) * scaleRatio;
+            let glowBlur = 10 + Math.sin(globalTime * 0.05) * 6;
             let peelProgress = 0;
             if (currentStage >= STAGE_PEEL) {
                 peelProgress = Math.min(1, (globalTime - 120) / 100);
@@ -195,6 +175,7 @@
             for (let i = 0; i < petalCount; i++) {
                 ctx.save();
                 ctx.translate(centerX, centerY);
+                
                 const baseAngle = (Math.PI * 2 / petalCount) * i;
                 ctx.rotate(baseAngle);
 
@@ -211,25 +192,28 @@
                 ctx.moveTo(0, -orangeRadius);
                 ctx.bezierCurveTo(-orangeRadius * 0.5, -orangeRadius, -orangeRadius * 0.6, 0, 0, 0);
                 ctx.bezierCurveTo(orangeRadius * 0.6, 0, orangeRadius * 0.5, -orangeRadius, 0, -orangeRadius);
+                
                 ctx.fillStyle = '#f97316'; 
                 ctx.fill();
 
                 ctx.beginPath();
-                ctx.moveTo(0, -orangeRadius + (5 * scaleRatio));
-                ctx.bezierCurveTo(-orangeRadius * 0.3, -orangeRadius + (5 * scaleRatio), -orangeRadius * 0.4, -5 * scaleRatio, 0, -5 * scaleRatio);
+                ctx.moveTo(0, -orangeRadius + 5);
+                ctx.bezierCurveTo(-orangeRadius * 0.3, -orangeRadius + 5, -orangeRadius * 0.4, -5, 0, -5);
                 ctx.fillStyle = 'rgba(255, 245, 230, 0.4)';
                 ctx.fill();
+
                 ctx.restore();
             }
 
             if (currentStage >= STAGE_BLOOM) {
                 flowers.forEach(f => {
                     if (f.currentSize < f.maxSize) f.currentSize += f.speed;
+
                     ctx.save();
                     ctx.translate(centerX, centerY);
                     ctx.rotate(f.angle);
                     ctx.fillStyle = f.color;
-                    ctx.shadowBlur = 10 * scaleRatio;
+                    ctx.shadowBlur = 10;
                     ctx.shadowColor = '#fff';
 
                     for (let j = 0; j < 5; j++) {
@@ -242,67 +226,77 @@
                 });
 
                 particles.forEach((p) => {
-                    p.x += p.vx; p.y += p.vy; p.vy += 0.02 * scaleRatio; p.alpha -= p.decay;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.02; 
+                    p.alpha -= p.decay;
+
                     if (p.alpha > 0) {
-                        ctx.save(); ctx.globalAlpha = p.alpha; ctx.beginPath();
-                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = p.color;
-                        ctx.shadowBlur = 5 * scaleRatio; ctx.shadowColor = p.color; ctx.fill(); ctx.restore();
+                        ctx.save();
+                        ctx.globalAlpha = p.alpha;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = p.color;
+                        ctx.shadowBlur = 5;
+                        ctx.shadowColor = p.color;
+                        ctx.fill();
+                        ctx.restore();
                     }
                 });
             }
 
             if (currentStage >= STAGE_TEXT) {
                 if (textAlpha < 1) textAlpha += 0.015;     
-                if (textYOffset > -40 * scaleRatio) textYOffset -= 0.5 * scaleRatio; 
+                if (textYOffset > -40) textYOffset -= 0.5; 
 
                 ctx.save();
-                ctx.globalAlpha = textAlpha; ctx.textAlign = 'center';
-                ctx.font = `bold ${Math.round(32 * scaleRatio)}px Georgia, serif`; ctx.fillStyle = '#dfb76c';
-                ctx.shadowBlur = 15 * scaleRatio; ctx.shadowColor = 'rgba(223, 183, 108, 0.8)';
-                ctx.fillText('Tom, I Miss U', centerX, centerY - orangeRadius - (130 * scaleRatio) + textYOffset);
+                ctx.globalAlpha = textAlpha;
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 32px Georgia, serif'; // AR 放大字體適配
+                ctx.fillStyle = '#dfb76c';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(223, 183, 108, 0.8)';
+                
+                ctx.fillText('Tom, I Miss U', centerX, centerY - orangeRadius - 130 + textYOffset);
                 ctx.restore();
             }
 
-            // 修復點 3：始終允許在追蹤時強制重新上傳紋理
-            if (isTracking) {
-                const plane = document.getElementById('ar-canvas-plane');
-                if (plane && plane.getObject3D('mesh')) {
-                    const material = plane.getObject3D('mesh').material;
-                    if (material && material.map) {
-                        material.map.needsUpdate = true;
-                    }
+            // 【非常重要】通知 A-Frame 刷新 Canvas 貼圖紋理，否則 AR 畫面會卡住不動
+            const plane = document.getElementById('ar-canvas-plane');
+            if (plane && plane.getObject3D('mesh')) {
+                const material = plane.getObject3D('mesh').material;
+                if (material && material.map) {
+                    material.map.needsUpdate = true;
                 }
             }
 
             requestAnimationFrame(renderARLoop);
         }
 
-        // --- MindAR 監聽事件 ---
+        // --- MindAR 監聽事件：控制動畫何時播放/重置 ---
         const targetEntity = document.getElementById('earring-target');
         const overlayText = document.getElementById('scan-overlay');
 
+        // 1. 當現實中【識別到】耳環時
         targetEntity.addEventListener("targetFound", event => {
             console.log("耳環識別成功！展開動畫開始");
             isTracking = true;
-            overlayText.style.display = "none"; 
+            overlayText.style.display = "none"; // 隱藏提示
         });
 
+        // 2. 當耳環【離開視線】時
         targetEntity.addEventListener("targetLost", event => {
             console.log("耳環離開視線，重置動畫");
             isTracking = false;
-            globalTime = 0; textAlpha = 0; textYOffset = 0;
+            // 重置所有動畫狀態機，以便下次對準時重新播放
+            globalTime = 0;
+            textAlpha = 0;
+            textYOffset = 0;
             currentStage = STAGE_GLOW;
-            overlayText.style.display = "block"; 
-
-            // 清空畫布並強制同步一幀，確保虛擬物體完全消失，不殘留上一幀
-            ctx.clearRect(0, 0, size, size);
-            const plane = document.getElementById('ar-canvas-plane');
-            if (plane && plane.getObject3D('mesh')) {
-                const material = plane.getObject3D('mesh').material;
-                if (material && material.map) material.map.needsUpdate = true;
-            }
+            overlayText.style.display = "block"; // 重新顯示提示
         });
 
+        // 啟動渲染
         renderARLoop();
     </script>
 </body>
