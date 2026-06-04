@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>新中式賽博 AR - 橘子綻放</title>
+    <title>新中式賽博 AR - 穩定防抖版</title>
     
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.0/dist/mindar-image-aframe.prod.js"></script>
@@ -13,12 +13,10 @@
             margin: 0;
             overflow: hidden;
         }
-        /* 隱藏 MindAR 預設的加載界面，可自訂 */
         .mindar-ui-loading {
             background: rgba(11, 13, 16, 0.9) !important;
             color: #dfb76c !important;
         }
-        /* 提示用戶掃描耳環的 UI */
         #scan-overlay {
             position: fixed;
             top: 20px;
@@ -36,6 +34,7 @@
             border-radius: 4px;
             pointer-events: none;
             text-align: center;
+            transition: opacity 0.5s;
         }
     </style>
 </head>
@@ -44,36 +43,36 @@
     <div id="scan-overlay">請將相機對準【橙色陶瓷耳環】</div>
 
     <a-scene 
-        mindar-image="imageTargetSrc: ./earring.mind; autoStart: true; uiLoading: yes; uiScanning: yes;" 
+        mindar-image="imageTargetSrc: ./earring.mind; autoStart: true; uiLoading: yes; uiScanning: yes; filterMinCF: 0.0001; filterBeta: 0.001;" 
         color-space="sRGB" 
         renderer="colorManagement: true, physicallyCorrectLights" 
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
         
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        <a-camera position="0 0 0" look-controls="enabled: false">
+            <a-entity id="camera-view" visible="false">
+                </a-entity>
+        </a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0" id="earring-target">
-            
             <a-plane 
                 id="ar-canvas-plane" 
                 position="0 0 0" 
                 rotation="0 0 0" 
-                width="1.5" 
-                height="1.5" 
+                width="1.2" 
+                height="1.2" 
                 material="shader: flat; src: #animationCanvas; transparent: true; opacity: 1;">
             </a-plane>
-
         </a-entity>
     </a-scene>
 
     <canvas id="animationCanvas" style="display: none;"></canvas>
 
     <script>
-        // --- 核心控制中心（完全保留並適配你的 Canvas 代碼） ---
+        // --- 完全保留並融合你的 Canvas 核心控制中心 ---
         const canvas = document.getElementById('animationCanvas');
         const ctx = canvas.getContext('2d');
 
-        // 固定 Canvas 分辨率（提供給 AR 貼圖高清晰度）
         const size = 600;
         canvas.width = size;
         canvas.height = size;
@@ -93,7 +92,9 @@
         let flowers = [];
         let textAlpha = 0;
         let textYOffset = 0;
-        let isTracking = false; // 用於判斷現實中是否正對準耳環
+        
+        // 核心改動變數
+        let isAnimationStarted = false; // 動畫是否已經被觸發
 
         function initBlooms() {
             flowers = [];
@@ -144,17 +145,15 @@
             ctx.restore();
         }
 
-        // 核心渲染循環
+        // 核心動畫渲染循環
         function renderARLoop() {
-            // 清除畫布，注意在 AR 中我們需要透明背景，所以清除為全透明
             ctx.clearRect(0, 0, size, size);
 
-            // 只有當 AR 識別到耳環時，動畫才開始走時間軸
-            if (isTracking) {
+            // 一旦觸發成功，時間軸就會無條件往前走，不再管現實中是否還對準耳環
+            if (isAnimationStarted) {
                 globalTime++;
             }
 
-            // 判定動畫進行階段
             if (globalTime <= 120) currentStage = STAGE_GLOW;
             else if (globalTime > 120 && globalTime <= 240) currentStage = STAGE_PEEL;
             else if (globalTime > 240 && globalTime <= 340) {
@@ -252,7 +251,7 @@
                 ctx.save();
                 ctx.globalAlpha = textAlpha;
                 ctx.textAlign = 'center';
-                ctx.font = 'bold 32px Georgia, serif'; // AR 放大字體適配
+                ctx.font = 'bold 30px Georgia, serif'; 
                 ctx.fillStyle = '#dfb76c';
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = 'rgba(223, 183, 108, 0.8)';
@@ -261,7 +260,7 @@
                 ctx.restore();
             }
 
-            // 【非常重要】通知 A-Frame 刷新 Canvas 貼圖紋理，否則 AR 畫面會卡住不動
+            // 更新 A-Frame 中的紋理
             const plane = document.getElementById('ar-canvas-plane');
             if (plane && plane.getObject3D('mesh')) {
                 const material = plane.getObject3D('mesh').material;
@@ -273,28 +272,37 @@
             requestAnimationFrame(renderARLoop);
         }
 
-        // --- MindAR 監聽事件：控制動畫何時播放/重置 ---
+        // --- 核心轉移邏輯：移開鏡頭不影響的秘密 ---
         const targetEntity = document.getElementById('earring-target');
+        const canvasPlane = document.getElementById('ar-canvas-plane');
+        const cameraView = document.getElementById('camera-view');
         const overlayText = document.getElementById('scan-overlay');
 
-        // 1. 當現實中【識別到】耳環時
         targetEntity.addEventListener("targetFound", event => {
-            console.log("耳環識別成功！展開動畫開始");
-            isTracking = true;
-            overlayText.style.display = "none"; // 隱藏提示
+            // 如果動畫已經觸發過，就不再重複處理
+            if (isAnimationStarted) return; 
+
+            console.log("耳環識別成功！立刻切換渲染坐標系...");
+            isAnimationStarted = true;
+            overlayText.style.opacity = "0"; // 隱藏掃描提示
+
+            // 【黑魔法步驟】
+            // 1. 取得 3D 物體實體
+            const planeObject3D = canvasPlane.object3D;
+            
+            // 2. 將這個動畫平面從現實世界錨點中「拔出」，塞進手機相機的子節點中
+            cameraView.object3D.add(planeObject3D);
+            
+            // 3. 把平面固定在相機前方中央（Z = -2 米處，大小適中，完美貼合螢幕）
+            planeObject3D.position.set(0, 0, -2); 
+            planeObject3D.rotation.set(0, 0, 0);
+            
+            // 4. 顯示相機視角容器
+            cameraView.setAttribute('visible', 'true');
         });
 
-        // 2. 當耳環【離開視線】時
-        targetEntity.addEventListener("targetLost", event => {
-            console.log("耳環離開視線，重置動畫");
-            isTracking = false;
-            // 重置所有動畫狀態機，以便下次對準時重新播放
-            globalTime = 0;
-            textAlpha = 0;
-            textYOffset = 0;
-            currentStage = STAGE_GLOW;
-            overlayText.style.display = "block"; // 重新顯示提示
-        });
+        // 註：因為我們要讓它「持續播放」，所以拿掉了 targetLost 的重置重播邏輯。
+        // 如果想要在播完後（比如 500 幀後）自動恢復掃描狀態，可以另外加一個計時器重置。
 
         // 啟動渲染
         renderARLoop();
