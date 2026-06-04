@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>新中式賽博 AR - 橘子綻放</title>
+    <title>新中式賽博 AR - 橘子綻放 (穩定優化版)</title>
     
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.0/dist/mindar-image-aframe.prod.js"></script>
@@ -44,43 +44,86 @@
     <div id="scan-overlay">請將相機對準【橙色陶瓷耳環】</div>
 
     <a-scene 
-        mindar-image="imageTargetSrc: ./earring.mind; autoStart: true; uiLoading: yes; uiScanning: yes;" 
+        mindar-image="imageTargetSrc: ./earring.mind; autoStart: true; uiLoading: yes; uiScanning: yes; filterMinCF: 0.001; filterBeta: 10;" 
         color-space="sRGB" 
-        renderer="colorManagement: true, physicallyCorrectLights" 
+        renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true; logarithmicDepthBuffer: true;" 
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-entity mindar-image-target="targetIndex: 0" id="earring-target">
-            
-            <a-plane 
-                id="ar-canvas-plane" 
-                position="0 0 0" 
-                rotation="0 0 0" 
-                width="1.5" 
-                height="1.5" 
-                material="shader: flat; src: #animationCanvas; transparent: true; opacity: 1;">
-            </a-plane>
+        <a-entity mindar-image-target="targetIndex: 0" id="earring-target"></a-entity>
 
-        </a-entity>
+        <a-plane 
+            id="ar-canvas-plane" 
+            smooth-marker
+            position="0 0 0" 
+            rotation="0 0 0" 
+            width="1.5" 
+            height="1.5" 
+            material="shader: flat; src: #animationCanvas; transparent: true; opacity: 1;">
+        </a-plane>
+
     </a-scene>
 
     <canvas id="animationCanvas" style="display: none;"></canvas>
 
     <script>
-        // --- 核心控制中心（完全保留並適配你的 Canvas 代碼） ---
+        // --- 穩定性優化：A-Frame 平滑濾波組件 ---
+        AFRAME.registerComponent('smooth-marker', {
+            init: function () {
+                this.target = document.getElementById('earring-target');
+                this.lerpFactor = 0.15; // 平滑因子 (0.1 ~ 0.3)，越小越穩定，但跟隨會稍有延遲感
+                
+                this.prevPosition = new THREE.Vector3();
+                this.prevQuaternion = new THREE.Quaternion();
+                this.firstFound = true;
+            },
+            tick: function () {
+                // 如果目前現實中沒有追蹤到目標，則不進行插值運算
+                if (!isTracking) {
+                    this.firstFound = true;
+                    return;
+                }
+
+                const targetObj = this.target.object3D;
+                const currentObj = this.el.object3D;
+
+                // 剛識別到的第一幀，直接同步位置與旋轉，防止物體從原點飛過來的穿幫鏡頭
+                if (this.firstFound) {
+                    currentObj.position.copy(targetObj.position);
+                    currentObj.quaternion.copy(targetObj.quaternion);
+                    
+                    this.prevPosition.copy(targetObj.position);
+                    this.prevQuaternion.copy(targetObj.quaternion);
+                    this.firstFound = false;
+                    return;
+                }
+
+                // 位置 LERP 線性插值
+                currentObj.position.lerpVectors(this.prevPosition, targetObj.position, this.lerpFactor);
+                this.prevPosition.copy(currentObj.position);
+
+                // 旋轉 Slerp 球面線性插值
+                THREE.Quaternion.slerp(this.prevQuaternion, targetObj.quaternion, currentObj.quaternion, this.lerpFactor);
+                this.prevQuaternion.copy(currentObj.quaternion);
+            }
+        });
+
+        // --- 核心控制中心 ---
         const canvas = document.getElementById('animationCanvas');
         const ctx = canvas.getContext('2d');
 
-        // 固定 Canvas 分辨率（提供給 AR 貼圖高清晰度）
-        const size = 600;
+        // 優化點 4：將尺寸改為 2 的冪次方 (512)，提升 GPU 紋理映射效率與記憶體穩定度
+        const size = 512;
         canvas.width = size;
         canvas.height = size;
 
+        // 等比例適配原有 600 解析度的座標點 (512 / 600 ≈ 0.853)
+        const scaleRatio = size / 600;
         const centerX = size / 2;
-        const centerY = size / 2 + 50;
-        const orangeRadius = 50;
+        const centerY = (size / 2 + 50) * scaleRatio;
+        const orangeRadius = 50 * scaleRatio;
 
         let globalTime = 0;
         const STAGE_GLOW = 0;      
@@ -101,21 +144,21 @@
             for (let i = 0; i < 6; i++) {
                 flowers.push({
                     angle: (Math.PI * 2 / 6) * i,
-                    maxSize: 15 + Math.random() * 10,
+                    maxSize: (15 + Math.random() * 10) * scaleRatio,
                     currentSize: 0,
-                    speed: 0.4 + Math.random() * 0.3,
+                    speed: (0.4 + Math.random() * 0.3) * scaleRatio,
                     color: i % 2 === 0 ? '#fff5f5' : '#ffd3d3'
                 });
             }
             for (let i = 0; i < 60; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const speed = 1.5 + Math.random() * 3;
+                const speed = (1.5 + Math.random() * 3) * scaleRatio;
                 particles.push({
                     x: centerX,
                     y: centerY,
                     vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed - 1, 
-                    radius: 1.5 + Math.random() * 2,
+                    vy: Math.sin(angle) * speed - (1 * scaleRatio), 
+                    radius: (1.5 + Math.random() * 2) * scaleRatio,
                     color: `hsl(${Math.random() * 40 + 20}, 100%, 70%)`, 
                     alpha: 1,
                     decay: 0.015 + Math.random() * 0.02
@@ -126,18 +169,18 @@
         function drawEarringHook() {
             ctx.save();
             ctx.strokeStyle = '#d4af37'; 
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 3 * scaleRatio;
             ctx.lineCap = 'round';
-            ctx.shadowBlur = 4;
+            ctx.shadowBlur = 4 * scaleRatio;
             ctx.shadowColor = 'rgba(212, 175, 55, 0.3)';
 
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY - orangeRadius - 50);
-            ctx.quadraticCurveTo(centerX + 15, centerY - orangeRadius - 70, centerX + 5, centerY - orangeRadius - 100);
+            ctx.moveTo(centerX, centerY - orangeRadius - (50 * scaleRatio));
+            ctx.quadraticCurveTo(centerX + (15 * scaleRatio), centerY - orangeRadius - (70 * scaleRatio), centerX + (5 * scaleRatio), centerY - orangeRadius - (100 * scaleRatio));
             ctx.stroke();
 
             ctx.beginPath();
-            ctx.arc(centerX, centerY - orangeRadius - 10, 6, 0, Math.PI * 2);
+            ctx.arc(centerX, centerY - orangeRadius - (10 * scaleRatio), 6 * scaleRatio, 0, Math.PI * 2);
             ctx.fillStyle = '#d4af37';
             ctx.fill();
             ctx.stroke();
@@ -146,7 +189,7 @@
 
         // 核心渲染循環
         function renderARLoop() {
-            // 清除畫布，注意在 AR 中我們需要透明背景，所以清除為全透明
+            // 清除畫布
             ctx.clearRect(0, 0, size, size);
 
             // 只有當 AR 識別到耳環時，動畫才開始走時間軸
@@ -165,7 +208,7 @@
 
             drawEarringHook();
 
-            let glowBlur = 10 + Math.sin(globalTime * 0.05) * 6;
+            let glowBlur = (10 + Math.sin(globalTime * 0.05) * 6) * scaleRatio;
             let peelProgress = 0;
             if (currentStage >= STAGE_PEEL) {
                 peelProgress = Math.min(1, (globalTime - 120) / 100);
@@ -197,8 +240,8 @@
                 ctx.fill();
 
                 ctx.beginPath();
-                ctx.moveTo(0, -orangeRadius + 5);
-                ctx.bezierCurveTo(-orangeRadius * 0.3, -orangeRadius + 5, -orangeRadius * 0.4, -5, 0, -5);
+                ctx.moveTo(0, -orangeRadius + (5 * scaleRatio));
+                ctx.bezierCurveTo(-orangeRadius * 0.3, -orangeRadius + (5 * scaleRatio), -orangeRadius * 0.4, -5 * scaleRatio, 0, -5 * scaleRatio);
                 ctx.fillStyle = 'rgba(255, 245, 230, 0.4)';
                 ctx.fill();
 
@@ -213,7 +256,7 @@
                     ctx.translate(centerX, centerY);
                     ctx.rotate(f.angle);
                     ctx.fillStyle = f.color;
-                    ctx.shadowBlur = 10;
+                    ctx.shadowBlur = 10 * scaleRatio;
                     ctx.shadowColor = '#fff';
 
                     for (let j = 0; j < 5; j++) {
@@ -228,7 +271,7 @@
                 particles.forEach((p) => {
                     p.x += p.vx;
                     p.y += p.vy;
-                    p.vy += 0.02; 
+                    p.vy += 0.02 * scaleRatio; 
                     p.alpha -= p.decay;
 
                     if (p.alpha > 0) {
@@ -237,7 +280,7 @@
                         ctx.beginPath();
                         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
                         ctx.fillStyle = p.color;
-                        ctx.shadowBlur = 5;
+                        ctx.shadowBlur = 5 * scaleRatio;
                         ctx.shadowColor = p.color;
                         ctx.fill();
                         ctx.restore();
@@ -247,33 +290,35 @@
 
             if (currentStage >= STAGE_TEXT) {
                 if (textAlpha < 1) textAlpha += 0.015;     
-                if (textYOffset > -40) textYOffset -= 0.5; 
+                if (textYOffset > -40 * scaleRatio) textYOffset -= 0.5 * scaleRatio; 
 
                 ctx.save();
                 ctx.globalAlpha = textAlpha;
                 ctx.textAlign = 'center';
-                ctx.font = 'bold 32px Georgia, serif'; // AR 放大字體適配
+                ctx.font = `bold ${Math.round(32 * scaleRatio)}px Georgia, serif`;
                 ctx.fillStyle = '#dfb76c';
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = 15 * scaleRatio;
                 ctx.shadowColor = 'rgba(223, 183, 108, 0.8)';
                 
-                ctx.fillText('Tom, I Miss U', centerX, centerY - orangeRadius - 130 + textYOffset);
+                ctx.fillText('Tom, I Miss U', centerX, centerY - orangeRadius - (130 * scaleRatio) + textYOffset);
                 ctx.restore();
             }
 
-            // 【非常重要】通知 A-Frame 刷新 Canvas 貼圖紋理，否則 AR 畫面會卡住不動
-            const plane = document.getElementById('ar-canvas-plane');
-            if (plane && plane.getObject3D('mesh')) {
-                const material = plane.getObject3D('mesh').material;
-                if (material && material.map) {
-                    material.map.needsUpdate = true;
+            // 優化點 5：加入 isTracking 節流控制。只有在相機對準耳環且動畫進行時，才更新 WebGL 貼圖，大幅減輕 GPU 壓力防止掉格震動。
+            if (isTracking) {
+                const plane = document.getElementById('ar-canvas-plane');
+                if (plane && plane.getObject3D('mesh')) {
+                    const material = plane.getObject3D('mesh').material;
+                    if (material && material.map) {
+                        material.map.needsUpdate = true;
+                    }
                 }
             }
 
             requestAnimationFrame(renderARLoop);
         }
 
-        // --- MindAR 監聽事件：控制動畫何時播放/重置 ---
+        // --- MindAR 監聽事件 ---
         const targetEntity = document.getElementById('earring-target');
         const overlayText = document.getElementById('scan-overlay');
 
@@ -281,19 +326,27 @@
         targetEntity.addEventListener("targetFound", event => {
             console.log("耳環識別成功！展開動畫開始");
             isTracking = true;
-            overlayText.style.display = "none"; // 隱藏提示
+            overlayText.style.display = "none"; 
         });
 
         // 2. 當耳環【離開視線】時
         targetEntity.addEventListener("targetLost", event => {
             console.log("耳環離開視線，重置動畫");
             isTracking = false;
-            // 重置所有動畫狀態機，以便下次對準時重新播放
+            // 重置所有動畫狀態機
             globalTime = 0;
             textAlpha = 0;
             textYOffset = 0;
             currentStage = STAGE_GLOW;
-            overlayText.style.display = "block"; // 重新顯示提示
+            overlayText.style.display = "block"; 
+
+            // 離開視線時手動多清空一次 Canvas，防止殘留畫面定格在空中
+            ctx.clearRect(0, 0, size, size);
+            const plane = document.getElementById('ar-canvas-plane');
+            if (plane && plane.getObject3D('mesh')) {
+                const material = plane.getObject3D('mesh').material;
+                if (material && material.map) material.map.needsUpdate = true;
+            }
         });
 
         // 啟動渲染
