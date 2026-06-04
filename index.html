@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>釉中之秘：瓷藝迷蹤 - 交互解密測試版</title>
+    <title>釉中之秘：瓷藝迷蹤 - 序幕互動版</title>
     <style>
         :root {
-            --bg-color: #1a1612;
-            --panel-bg: #2c2219;
-            --text-color: #e8d8c8;
+            --bg-color: #120e0a;
+            --panel-bg: #231a11;
+            --text-color: #e6d7c3;
             --accent-color: #d4a373;
             --orange-ceramic: #e76f51;
         }
@@ -22,489 +22,641 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
+            justify-content: center;
         }
 
         h1 {
             color: var(--accent-color);
-            margin-bottom: 5px;
+            margin: 0 0 15px 0;
+            font-size: 24px;
+            letter-spacing: 2px;
         }
 
-        .guide-box {
-            background: #3d3025;
-            padding: 10px 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            border-left: 5px solid var(--accent-color);
-            max-width: 800px;
-        }
-
-        /* 遊戲主舞台 */
-        .game-stage {
-            display: flex;
-            width: 1000px;
-            height: 550px;
-            background: var(--panel-bg);
+        /* 遊戲舞台主容器 */
+        .game-container {
+            width: 960px;
+            height: 560px;
+            background: #1a130b;
             border: 3px solid var(--accent-color);
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+            position: relative;
             overflow: hidden;
         }
 
-        /* 面板通用樣式 */
+        /* 劇情文字與對話框系統 */
+        .dialog-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(to top, rgba(10,8,5,0.95) 80%, rgba(10,8,5,0));
+            padding: 30px 40px 20px 40px;
+            box-sizing: border-box;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .speaker-name {
+            color: var(--accent-color);
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .dialog-text {
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        .click-hint {
+            align-self: flex-end;
+            font-size: 12px;
+            color: #88735c;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            50% { opacity: 0.3; }
+        }
+
+        /* 各場景視角控制 */
+        .scene {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .scene.active {
+            display: flex;
+        }
+
+        /* 場景 1 & 2：工坊與木盒 */
+        .center-interactive {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .clickable-element {
+            padding: 15px 30px;
+            background: rgba(44, 34, 25, 0.9);
+            border: 2px solid var(--accent-color);
+            color: var(--text-color);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(212,163,115,0.2);
+        }
+
+        .clickable-element:hover {
+            background: var(--accent-color);
+            color: #000;
+            box-shadow: 0 0 25px rgba(212,163,115,0.5);
+        }
+
+        /* 模擬木盒內的黑色天鵝絨與耳環展示 */
+        .box-open-view {
+            width: 300px;
+            height: 300px;
+            background: #050505;
+            border: 8px solid #3a2e2b;
+            border-radius: 10px;
+            box-shadow: inset 0 0 40px rgba(0,0,0,1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 120px;
+        }
+
+        /* ================================================================= */
+        /* 場景 4：核心解謎工作檯介面                                         */
+        /* ================================================================= */
+        .puzzle-interface {
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+
         .panel {
             flex: 1;
             padding: 20px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid #4a3b2c;
-            position: relative;
+            border-right: 1px solid #3a2e23;
+            background: var(--panel-bg);
         }
 
-        .panel:last-child {
-            border-right: none;
-        }
+        .panel:last-child { border-right: none; }
 
-        h3 {
-            margin-top: 0;
+        .panel-title {
+            margin: 0 0 15px 0;
+            font-size: 16px;
             color: var(--accent-color);
-            border-bottom: 1px solid #4a3b2c;
+            border-bottom: 1px solid #3a2e23;
             padding-bottom: 5px;
         }
 
-        /* 左側：材料書 */
-        .layer-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .layer-btn {
-            background: #3d3025;
-            color: var(--text-color);
-            border: 1px solid #5c4737;
-            padding: 12px;
-            border-radius: 5px;
+        /* 左面板：材料書結構 */
+        .layer-item {
+            background: #1a130b;
+            border: 1px solid #4a3826;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
             cursor: pointer;
-            text-align: left;
-            transition: all 0.3s;
+            font-size: 13px;
+            transition: all 0.2s;
         }
-
-        .layer-btn:hover {
-            background: #4a3b2c;
-            border-color: var(--accent-color);
-        }
-
-        .layer-btn.active {
+        .layer-item:hover { border-color: var(--accent-color); }
+        .layer-item.active {
             background: var(--accent-color);
-            color: #000;
+            color: #120e0a;
             font-weight: bold;
         }
 
-        /* 中央：耳環展示區 */
-        #center-panel {
-            flex: 1.2;
-            justify-content: center;
-            align-items: center;
-            background: #1e1914;
-        }
-
-        .earring-container {
+        /* 中面板：耳環工作區 */
+        .workspace-center {
+            flex: 1.3;
+            background: #140f0a;
             position: relative;
-            width: 200px;
-            height: 350px;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* 模擬圖中的橙色耳環 */
-        .ceramic-earring {
-            width: 80px;
-            height: 80px;
-            background: radial-gradient(circle at 30% 30%, #ff9e79, var(--orange-ceramic) 60%, #8b2611);
+        .earring-art {
+            width: 90px;
+            height: 90px;
+            background: radial-gradient(circle at 35% 35%, #ff9a76, var(--orange-ceramic) 70%, #7a1d0b);
             border-radius: 50%;
-            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.4), 0 10px 20px rgba(0,0,0,0.6);
             position: relative;
-            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
         }
 
-        /* 耳環上方的金屬鉤 */
-        .ceramic-earring::before {
+        /* 耳環金屬掛鉤 */
+        .earring-art::before {
             content: '';
             position: absolute;
-            top: -40px;
-            left: 35px;
-            width: 10px;
-            height: 40px;
+            top: -45px;
+            left: 40px;
+            width: 12px;
+            height: 45px;
             border: 3px solid #d4af37;
             border-bottom: none;
             border-right: none;
-            border-top-left-radius: 10px;
+            border-top-left-radius: 12px;
         }
 
-        /* 微觀隱藏的鳳凰印記 (放大鏡下才看得到) */
-        .hidden-mark {
+        /* 隱藏的微觀標記 */
+        .micro-mark {
             position: absolute;
-            top: 30px;
-            left: 30px;
-            font-size: 20px;
+            top: 32px;
+            left: 32px;
+            font-size: 22px;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.2s;
             color: #fff;
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+            user-select: none;
         }
 
-        /* 放大鏡工具 */
-        .lens-tool {
-            width: 70px;
-            height: 70px;
+        /* 可拖曳放大鏡 */
+        .magnifier-tool {
+            width: 75px;
+            height: 75px;
             border: 4px solid #d4af37;
             border-radius: 50%;
             position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255,255,255,0.1);
+            top: 30px;
+            right: 30px;
+            background: rgba(255,255,255,0.05);
             backdrop-filter: blur(0px);
             cursor: grab;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 12px;
-            color: #fff;
-            user-select: none;
+            font-size: 11px;
+            color: #d4af37;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             z-index: 10;
         }
-
-        .lens-tool::after {
+        .magnifier-tool::after {
             content: '';
             position: absolute;
-            bottom: -15px;
-            right: -15px;
-            width: 6px;
-            height: 25px;
+            bottom: -12px;
+            right: -12px;
+            width: 5px;
+            height: 22px;
             background: #d4af37;
             transform: rotate(-45deg);
         }
 
-        /* 右側：地圖與羅盤 */
-        .map-box {
+        /* 右面板：地圖與羅盤 */
+        .map-area {
             width: 100%;
-            height: 180px;
-            background: #ebdcb9;
-            border: 2px solid #8b7355;
-            border-radius: 5px;
-            margin-top: 10px;
+            height: 140px;
+            background: #dfcfb3;
+            border: 1px solid #6b553d;
+            border-radius: 4px;
             position: relative;
-            color: #333;
             overflow: hidden;
+            color: #2b2015;
         }
-
-        .map-bg {
+        .map-grid {
             width: 100%;
             height: 100%;
-            opacity: 0.7;
-            background: radial-gradient(#cda873 10%, transparent 11%), radial-gradient(#cda873 10%, transparent 11%);
+            opacity: 0.15;
+            background-image: linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px);
             background-size: 20px 20px;
-            background-position: 0 0, 10px 10px;
         }
-
-        .secret-location {
+        .poi-node {
             position: absolute;
-            top: 40px;
-            left: 180px;
-            background: red;
-            color: white;
+            top: 45px;
+            left: 120px;
+            background: #ae2012;
+            color: #fff;
             padding: 3px 6px;
             font-size: 11px;
-            font-weight: bold;
             border-radius: 3px;
+            font-weight: bold;
             display: none;
-            animation: blink 1s infinite;
+            animation: flash 1s infinite;
         }
+        @keyframes flash { 50% { opacity: 0.3; } }
 
-        @keyframes blink {
-            50% { opacity: 0; }
-        }
-
-        .compass-container {
+        .compass-area {
+            margin-top: 25px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 20px;
         }
-
-        .compass {
-            width: 100px;
-            height: 100px;
-            border: 4px solid var(--accent-color);
+        .compass-disc {
+            width: 110px;
+            height: 110px;
+            border: 3px solid var(--accent-color);
             border-radius: 50%;
             position: relative;
+            background: #17120c;
             cursor: pointer;
-            transition: transform 0.4s ease;
-            background: #221a13;
+            transition: transform 0.3s ease;
         }
-
-        .compass-pointer {
-            width: 6px;
-            height: 80px;
-            background: linear-gradient(to bottom, red 50%, #fff 50%);
+        .compass-needle {
+            width: 4px;
+            height: 90px;
+            background: linear-gradient(to bottom, #d62828 50%, #fff 50%);
             position: absolute;
             top: 10px;
-            left: 47px;
-            border-radius: 3px;
+            left: 53px;
+            border-radius: 2px;
         }
-
-        .compass-labels {
+        .direction-text {
             position: absolute;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .dir-n { top: 4px; left: 51px; color: #d62828; }
+        .dir-e { top: 48px; right: 6px; }
+        .dir-s { bottom: 4px; left: 52px; }
+        .dir-w { top: 48px; left: 6px; }
+
+        /* 黑屏淡出效果 */
+        .fade-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            font-size: 12px;
-            font-weight: bold;
+            background: #000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 2s ease;
+            z-index: 200;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        .label-n { position: absolute; top: 2px; left: 45px; color: red; }
-        .label-e { position: absolute; top: 42px; right: 5px; }
-        .label-s { position: absolute; bottom: 2px; left: 46px; }
-        .label-w { position: absolute; top: 42px; left: 5px; }
-
-        /* 底部對話/日誌欄 */
-        .dialog-box {
-            width: 1000px;
-            background: #221a13;
-            border: 2px solid var(--accent-color);
-            border-top: none;
-            border-radius: 0 0 10px 10px;
-            padding: 15px;
-            box-sizing: border-box;
-            min-height: 80px;
-        }
-
-        .dialog-text {
-            margin: 0;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-
-        .success-banner {
-            display: none;
-            background: #2a9d8f;
-            color: white;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-            width: 970px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 18px;
+        .title-card {
+            color: var(--accent-color);
+            font-size: 32px;
+            font-family: serif;
+            letter-spacing: 4px;
+            opacity: 0;
+            transition: opacity 1.5s ease;
         }
     </style>
 </head>
 <body>
 
-    <h1>《釉中之秘：瓷藝迷蹤》- 互動工作檯</h1>
-    
-    <div class="guide-box">
-        <p style="margin: 0;"><strong>【當前任務】</strong>：<br>
-        1. 在左側點擊選擇<strong>「第三層：鳳凰釉」</strong>。<br>
-        2. 拖曳中央右上角的<strong>金金色放大鏡</strong>到橙色耳環上，尋找隱藏的鳳凰印記。<br>
-        3. 根據印記提示的朝向（東北方），點擊<strong>右側羅盤</strong>將指針轉向東北方（NE），解鎖地圖暗道。</p>
-    </div>
+    <h1>《釉中之秘：瓷藝迷蹤》- 互動遊戲引擎</h1>
 
-    <div class="game-stage">
+    <div class="game-container" id="engine-core">
         
-        <div class="panel" id="left-panel">
-            <h3>📖 陶瓷材料結構書</h3>
-            <p style="font-size: 13px; color:#aaa;">請選擇要分析的結構層：</p>
-            <div class="layer-list">
-                <button class="layer-btn" onclick="selectLayer(this, 5)">第五層：保護外釉 (Outer)</button>
-                <button class="layer-btn" id="target-layer-btn" onclick="selectLayer(this, 4)">第四層：鳳凰密釉 (Hidden)</button>
-                <button class="layer-btn" onclick="selectLayer(this, 3)">第三層：基礎內釉 (Inner)</button>
-                <button class="layer-btn" onclick="selectLayer(this, 2)">第二層：化妝土層 (Engobe)</button>
-                <button class="layer-btn" onclick="selectLayer(this, 1)">第一層：高嶺土胎骨 (Body)</button>
-            </div>
-            <p id="layer-desc" style="margin-top: 15px; font-size: 14px; color: var(--accent-color);"></p>
+        <div class="fade-overlay" id="fade-layer">
+            <div class="title-card" id="title-card">第一章：雨夜御窯</div>
         </div>
 
-        <div class="panel" id="center-panel">
-            <div class="earring-container" id="earring-area">
-                <div class="ceramic-earring" id="earring">
-                    <div class="hidden-mark" id="phoenix-mark">🦅<span style="font-size: 10px;display: block;">NE</span></div>
+        <div class="dialog-overlay" id="dialog-box" onclick="advanceStory()">
+            <div class="speaker-name" id="speaker-name">系統提示</div>
+            <p class="dialog-text" id="dialog-text">載入遊戲中...</p>
+            <div class="click-hint">▼ 點擊繼續劇情</div>
+        </div>
+
+        <div class="scene active" id="scene1" style="background-color: #1a1510;">
+            <div class="center-interactive" id="door-trigger" style="display: none;">
+                <div class="clickable-element" onclick="triggerDoorOpen()">【動作】走向大門並開門</div>
+            </div>
+        </div>
+
+        <div class="scene" id="scene2" style="background-color: #140f0a;">
+            <div class="center-interactive">
+                <div class="clickable-element" id="box-btn" onclick="openPackageBox()">【動作】拆封神秘木盒</div>
+                <div class="box-open-view" id="box-view" style="display: none;">
+                    <div class="earring-art" style="transform: scale(1.3);"></div>
                 </div>
             </div>
-            <div class="lens-tool" id="magnifier">放大鏡</div>
         </div>
 
-        <div class="panel" id="right-panel">
-            <h3>🗺️ 古窯殘圖</h3>
-            <div class="map-box">
-                <div class="map-bg"></div>
-                <div style="position: absolute; top:20px; left:20px; font-weight: bold;">景德鎮古窯區</div>
-                <div class="secret-location" id="secret-poi">📍 御窯廠暗道(解鎖!)</div>
-            </div>
+        <div class="scene" id="scene4">
+            <div class="puzzle-interface">
+                <div class="panel">
+                    <div class="panel-title">📖 陶瓷材料結構書</div>
+                    <div style="font-size: 11px; color: #88735c; margin-bottom: 10px;">點擊選取欲剖析的釉層：</div>
+                    <div class="layer-item" onclick="selectGlazeLayer(this, 5)">第五層：保護外釉層 (Outer)</div>
+                    <div class="layer-item" id="target-layer" onclick="selectGlazeLayer(this, 3)">第三層：鳳凰密釉層 (Secret)</div>
+                    <div class="layer-item" onclick="selectGlazeLayer(this, 2)">第二層：基礎內釉層 (Inner)</div>
+                    <div class="layer-item" onclick="selectGlazeLayer(this, 1)">第一層：高嶺土胎骨 (Body)</div>
+                    <div id="layer-status" style="margin-top: 15px; font-size: 12px; color: #cda873; line-height: 1.4;"></div>
+                </div>
 
-            <div class="compass-container">
-                <h3>🧭 航海羅盤</h3>
-                <div class="compass" id="compass" onclick="rotateCompass()">
-                    <div class="compass-labels">
-                        <span class="label-n">N</span>
-                        <span class="label-e">E</span>
-                        <span class="label-s">S</span>
-                        <span class="label-w">W</span>
+                <div class="workspace-center" id="workspace-area">
+                    <div class="earring-art" id="earring-target">
+                        <div class="micro-mark" id="phoenix-icon">🦅<span style="font-size:9px; display:block; text-align:center;">NE</span></div>
                     </div>
-                    <div class="compass-pointer"></div>
+                    <div class="magnifier-tool" id="lens-tool">微觀鏡</div>
                 </div>
-                <p style="font-size: 12px; color: #aaa; margin-top: 5px;">（點擊羅盤旋轉方向）</p>
+
+                <div class="panel">
+                    <div class="panel-title">🗺️ 古老殘圖</div>
+                    <div class="map-area">
+                        <div class="map-grid"></div>
+                        <div style="position: absolute; top:10px; left:10px; font-size:12px; font-weight:bold;">景德鎮古窯分佈圖</div>
+                        <div class="poi-node" id="secret-path">📍 御窯廠廢棄暗道</div>
+                    </div>
+
+                    <div class="compass-area">
+                        <div class="panel-title" style="width:100%; text-align:center; margin-bottom:10px;">🧭 航海羅盤</div>
+                        <div class="compass-disc" id="compass-ui" onclick="rotateCompassUI()">
+                            <div class="direction-text dir-n">N</div>
+                            <div class="direction-text dir-e">E</div>
+                            <div class="direction-text dir-s">S</div>
+                            <div class="direction-text dir-w">W</div>
+                            <div class="compass-needle"></div>
+                        </div>
+                        <div style="font-size: 10px; color: #88735c; margin-top: 5px;">點擊旋轉指針方向</div>
+                    </div>
+                </div>
             </div>
         </div>
 
-    </div>
-
-    <div class="dialog-box">
-        <p class="dialog-text" id="dialog-p">【林言】：這對橙色耳環非常神祕，我需要利用桌上的工具，解開爺爺留在這上面的線索……</p>
-    </div>
-
-    <div class="success-banner" id="win-banner">
-        🎉 序幕通關！成功鎖定「御窯廠暗道」，準備前往景德鎮！
     </div>
 
     <script>
-        // 遊戲狀態變數
-        let isLayerSelected = false;
-        let isMarkRevealed = false;
-        let compassAngle = 0;
-        let isCompassCorrect = false;
+        // --- 腳本劇情文本資料庫 ---
+        const storyScript = [
+            { id: 0, speaker: "系統文本", text: "2026年6月4日，午夜。暴雨。", action: () => showScene('scene1') },
+            { id: 1, speaker: "林言（獨白）", text: "「修復大師高嶺（爺爺）去世後的第三個月，工坊的生意大不如前。在這個快節奏的時代，已經很少有人願意花幾個月的時間，去等待一件破碎的瓷器重獲新生了。」" },
+            { id: 2, speaker: "環境音效", text: "【敲門聲：咚、咚、咚！急促而沉重】" },
+            { id: 3, speaker: "林言", text: "「誰會在這種大雨天深夜造訪？」", action: () => document.getElementById('door-trigger').style.display = 'flex' },
+            
+            // 點擊開門後切入
+            { id: 4, speaker: "系統文本", text: "開門聲：吱呀—— 門外空無一人，只有一個被防水布包裹得嚴嚴實實的快遞木盒靜靜地躺在風雨中。收件人寫著你的名字。" },
+            { id: 5, speaker: "系統文本", text: "切換至工作檯。你將木盒放在桌面上。", action: () => { showScene('scene2'); document.getElementById('dialog-box').style.display = 'none'; } },
+            
+            // 拆開木盒後切入
+            { id: 6, speaker: "系統文本", text: "【木盒開啟聲、絲綢摩擦聲】木盒內鋪著厚厚的黑色天鵝絨。靜靜躺在中央的，是一對橙色的圓珠陶瓷耳環。" },
+            { id: 7, speaker: "系統文本", text: "它飽滿、圓潤，在工坊昏暗的檯燈下，折射出令人屏息的高光澤感，彷彿封存了一縷落日的餘暉。" },
+            { id: 8, speaker: "林言（驚嘆）", text: "「這是……瓷器？不，普通的釉料絕不可能在這種強度的光線下呈現出如此深邃、純粹的橙色。這光澤……簡真就像活著一樣。」" },
+            { id: 9, speaker: "林言（分析）", text: "「這金屬耳鉤的工藝是現代的，但這兩顆陶瓷圓珠的胎體和釉色……絕對是古法燒製。等一下，木盒底部好像還有東西。」" },
+            { id: 10, speaker: "系統文本", text: "你在天鵝絨墊層下發現了一張邊緣焦黑的殘缺地圖，以及一本外皮磨損嚴重的【修復日誌】。" },
+            { id: 11, speaker: "林言", text: "「這地圖畫的是景德鎮周邊的古窯址？而這本筆記……天哪，這是我爺爺失蹤多年的修復日誌！」" },
+            { id: 12, speaker: "日記字跡", text: "「『鳳凰鳴矣，于彼高岡。』世人皆知青瓷翠綠，卻不知在大明宣德年間，曾有一抹驚世駭俗的『鳳凰釉』。其色如烈火落日，工藝早已失傳。若你看到此日誌，說明耳環已落入你手。林言，不要尋找我，除非你能解開謎題……」" },
+            { id: 13, speaker: "林言", text: "「爺爺……你到底瞞著我做了什麼？這對耳環就是解開『鳳凰釉』和您去向的鑰匙嗎？」" },
+            { id: 14, speaker: "系統提示", text: "請將【落日橙陶瓷耳環】放入工作檯中央，解鎖新手引導解密模式。", action: () => startPuzzleMode() },
+            
+            // 謎題完成後觸發
+            { id: 15, speaker: "林言", text: "「看到了！在內釉與外釉之間，有一個微雕的鳳凰標記！這是一個指向某處的指針！」", suspense: true },
+            { id: 16, speaker: "系統提示", text: "【系統問題 2】：「鳥兒指向古窯，但牠的巢穴在哪裡？」請根據方向引導旋轉右側羅盤。", suspense: true },
+            
+            // 最終通關
+            { id: 17, speaker: "系統文本", text: "【機關解鎖聲、日記本自動翻頁聲】隨著一聲清脆的咔嗒聲，爺爺的日誌解鎖了新的一頁。" },
+            { id: 18, speaker: "系統文本", text: "上面赫然寫著一個地址：景德鎮御窯廠遺址，北緯 29.2°。" },
+            { id: 19, speaker: "林言（眼神堅定）", text: "「鳳凰釉、神祕的包裹、還有爺爺的下落……看來，我必須親自去一趟景德鎮了。」", action: () => triggerGameEnd() }
+        ];
 
-        const dialog = document.getElementById('dialog-p');
+        let currentProgress = 0;
+        const dialogBox = document.getElementById('dialog-box');
+        const speakerName = document.getElementById('speaker-name');
+        const dialogText = document.getElementById('dialog-text');
 
-        // 1. 左側：選擇釉層
-        function selectLayer(btn, layerNum) {
-            // 清除其他按鈕的選取狀態
-            document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        // 初始化遊戲
+        window.onload = () => {
+            renderStoryNode(0);
+        };
 
-            const desc = document.getElementById('layer-desc');
-            if (layerNum === 4) {
-                isLayerSelected = true;
-                desc.innerText = "系統提示：探測到異常波長！這一層釉料含有未知微量元素，請用放大鏡深入觀察。";
-                dialog.innerText = "【林言】：「第四層的密度不對勁……這裡面好像封存了什麼東西。我得用放大鏡仔細看看。」";
-            } else {
-                isLayerSelected = false;
-                desc.innerText = "系統提示：結構正常，無特殊線索。";
-                dialog.innerText = "【林言】：「這一層看起來只是普通的古代工藝，秘密不外乎在這裡。」";
-                document.getElementById('phoenix-mark').style.opacity = 0;
+        function renderStoryNode(index) {
+            currentProgress = index;
+            const node = storyScript[index];
+            speakerName.innerText = node.speaker;
+            dialogText.innerText = node.text;
+            if (node.action) node.action();
+        }
+
+        function advanceStory() {
+            // 如果當前節點是鎖定解謎狀態，點擊對話框不推進
+            if (storyScript[currentProgress].suspense) return;
+
+            let next = currentProgress + 1;
+            if (next < storyScript.length) {
+                renderStoryNode(next);
             }
-            checkGameStatus();
         }
 
-        // 2. 中央：放大鏡拖曳邏輯 (滑鼠與觸控支援)
-        const magnifier = document.getElementById('magnifier');
-        const earring = document.getElementById('earring');
-        const phoenixMark = document.getElementById('phoenix-mark');
-
-        let isDragging = false;
-        let offsetX, offsetY;
-
-        magnifier.addEventListener('mousedown', startDrag);
-        window.addEventListener('mousemove', drag);
-        window.addEventListener('mouseup', stopDrag);
-
-        // 觸控支援
-        magnifier.addEventListener('touchstart', (e) => startDrag(e.touches[0]));
-        window.addEventListener('touchmove', (e) => drag(e.touches[0]));
-        window.addEventListener('touchend', stopDrag);
-
-        function startDrag(e) {
-            isDragging = true;
-            magnifier.style.cursor = 'grabbing';
-            const rect = magnifier.getBoundingClientRect();
-            offsetX = e.clientX - rect.left;
-            offsetY = e.clientY - rect.top;
+        function showScene(sceneId) {
+            document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+            document.getElementById(sceneId).classList.add('active');
         }
 
-        function drag(e) {
-            if (!isDragging) return;
+        // --- 場景互動動作 ---
+        function triggerDoorOpen() {
+            document.getElementById('door-trigger').style.display = 'none';
+            renderStoryNode(4); // 推進至開門文本
+        }
+
+        function openPackageBox() {
+            document.getElementById('box-btn').style.display = 'none';
+            document.getElementById('box-view').style.display = 'flex';
+            dialogBox.style.display = 'flex';
+            renderStoryNode(6); // 推進至看到耳環文本
+        }
+
+        // --- 解謎核心變數與邏輯 ---
+        let isGlazeTargetSelected = false;
+        let isMarkRevealed = false;
+        let compassDegrees = 0;
+
+        function startPuzzleMode() {
+            showScene('scene4');
+            dialogBox.style.display = 'flex';
+            speakerName.innerText = "【系統提示】";
+            dialogText.innerText = "【系統問題 1】：「第三層釉中隱藏著什麼秘密？」請在左側選擇對應釉層並使用微觀鏡。";
+            storyScript[14].suspense = true; // 鎖定對話
+        }
+
+        // 選擇釉層剖面
+        function selectGlazeLayer(element, layerId) {
+            document.querySelectorAll('.layer-item').forEach(item => item.classList.remove('active'));
+            element.classList.add('active');
             
-            const stage = document.querySelector('.game-stage');
-            const stageRect = stage.getBoundingClientRect();
-            
-            // 計算新位置（相對於網頁）
-            let x = e.clientX - stageRect.left - offsetX;
-            let y = e.clientY - stageRect.top - offsetY;
-
-            // 限制在舞台範圍內
-            x = Math.max(0, Math.min(x, stageRect.width - 70));
-            y = Math.max(0, Math.min(y, stageRect.height - 70));
-
-            magnifier.style.left = x + 'px';
-            magnifier.style.top = y + 'px';
-
-            // 檢測放大鏡是否碰撞到耳環
-            checkCollision();
-        }
-
-        function stopDrag() {
-            isDragging = false;
-            magnifier.style.cursor = 'grab';
-        }
-
-        function checkCollision() {
-            if (!isLayerSelected) return;
-
-            const magRect = magnifier.getBoundingClientRect();
-            const earRect = earring.getBoundingClientRect();
-
-            // 簡單的圓心距離碰撞檢測
-            const magCenterX = magRect.left + magRect.width / 2;
-            const magCenterY = magRect.top + magRect.height / 2;
-            const earCenterX = earRect.left + earRect.width / 2;
-            const earCenterY = earRect.top + earRect.height / 2;
-
-            const distance = Math.sqrt(Math.pow(magCenterX - earCenterX, 2) + Math.pow(magCenterY - earCenterY, 2));
-
-            // 當放大鏡中心接近耳環中心時
-            if (distance < 50) {
-                phoenixMark.style.opacity = 1;
+            const statusText = document.getElementById('layer-status');
+            if (layerId === 3) {
+                isGlazeTargetSelected = true;
+                statusText.innerHTML = "🔍 <b>掃描結果：</b> 該結構層厚度與光學折射率異常。建議使用微觀鏡進行表面微距觀察。";
                 if (!isMarkRevealed) {
-                    isMarkRevealed = true;
-                    dialog.innerText = "【林言】：「天哪！在放大鏡下，釉層裡浮現出了一個鳳凰印記！等等，鳳凰的嘴巴指向東北方（NE）！」";
-                    checkGameStatus();
+                    dialogText.innerText = "【系統提示】：釉層結構已切換。請將畫面中央右上角的「微觀鏡」拖曳到橙色耳環中心。";
                 }
             } else {
-                phoenixMark.style.opacity = 0;
+                isGlazeTargetSelected = false;
+                statusText.innerHTML = "❌ <b>掃描結果：</b> 普通釉面物理結構，未發現任何刻印或夾層痕跡。";
+                document.getElementById('phoenix-icon').style.opacity = 0;
             }
+            checkMicroCollision();
         }
 
-        // 3. 右側：羅盤旋轉邏輯
-        function rotateCompass() {
-            if (!isMarkRevealed) {
-                dialog.innerText = "【林言】：「現在瞎轉羅盤沒有用，我還不知道具體的方位指引。」";
+        // 放大鏡拖曳程式碼
+        const lens = document.getElementById('lens-tool');
+        const earring = document.getElementById('earring-target');
+        const phoenixIcon = document.getElementById('phoenix-icon');
+        let dragActive = false;
+        let startX, startY;
+
+        lens.addEventListener('mousedown', initDrag);
+        window.addEventListener('mousemove', executeDrag);
+        window.addEventListener('mouseup', terminateDrag);
+
+        lens.addEventListener('touchstart', (e) => initDrag(e.touches[0]));
+        window.addEventListener('touchmove', (e) => executeDrag(e.touches[0]));
+        window.addEventListener('touchend', terminateDrag);
+
+        function initDrag(e) {
+            dragActive = true;
+            lens.style.cursor = 'grabbing';
+            const rect = lens.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+        }
+
+        function executeDrag(e) {
+            if (!dragActive) return;
+            const containerRect = document.getElementById('engine-core').getBoundingClientRect();
+            let x = e.clientX - containerRect.left - startX;
+            let y = e.clientY - containerRect.top - startY;
+
+            // 限制拖曳不出遊戲邊框
+            x = Math.max(0, Math.min(x, containerRect.width - 75));
+            y = Math.max(0, Math.min(y, containerRect.height - 75));
+
+            lens.style.left = x + 'px';
+            lens.style.top = y + 'px';
+
+            checkMicroCollision();
+        }
+
+        function terminateDrag() {
+            dragActive = false;
+            lens.style.cursor = 'grab';
+        }
+
+        // 檢查微觀鏡是否對準耳環
+        function checkMicroCollision() {
+            if (!isGlazeTargetSelected) {
+                phoenixIcon.style.opacity = 0;
                 return;
             }
 
-            // 每次點擊旋轉 45 度
-            compassAngle += 45;
-            document.getElementById('compass').style.transform = `rotate(${compassAngle}deg)`;
+            const lensRect = lens.getBoundingClientRect();
+            const earRect = earring.getBoundingClientRect();
 
-            // 45 度 或 405 度 等等（代表指向東北方 NE）
-            if ((compassAngle % 360) === 45) {
-                isCompassCorrect = true;
-                dialog.innerText = "【林言】：「就是這個方向！羅盤與鳳凰印記共鳴了！」";
-                document.getElementById('secret-poi').style.display = 'block';
+            const lensX = lensRect.left + lensRect.width/2;
+            const lensY = lensRect.top + lensRect.height/2;
+            const earX = earRect.left + earRect.width/2;
+            const earY = earRect.top + earRect.height/2;
+
+            const dist = Math.sqrt(Math.pow(lensX - earX, 2) + Math.pow(lensY - earY, 2));
+
+            if (dist < 45) { // 進入碰撞半徑
+                phoenixIcon.style.opacity = 1;
+                if (!isMarkRevealed) {
+                    isMarkRevealed = true;
+                    storyScript[14].suspense = false; // 解開第一個鎖
+                    renderStoryNode(15); // 觸發林言台詞
+                }
             } else {
-                isCompassCorrect = false;
-                document.getElementById('secret-poi').style.display = 'none';
+                phoenixIcon.style.opacity = 0;
             }
-            checkGameStatus();
         }
 
-        // 核心狀態檢查：是否達成通關條件
-        function checkGameStatus() {
-            if (isLayerSelected && isMarkRevealed && isCompassCorrect) {
-                document.getElementById('win-banner').style.display = 'block';
-                dialog.innerText = "【系統】突破成功！隱藏在耳環釉層中的秘密坐標已與古地圖重合，『御窯廠暗道』正式解鎖！";
+        // 旋轉羅盤
+        function rotateCompassUI() {
+            if (!isMarkRevealed) return;
+
+            compassDegrees += 45;
+            document.getElementById('compass-ui').style.transform = `rotate(${compassDegrees}deg)`;
+
+            // 當羅盤偏轉 45 度（或者 45 + 360n），代表指向東北方 (NE)
+            if ((compassDegrees % 360) === 45) {
+                document.getElementById('secret-path').style.display = 'block';
+                storyScript[15].suspense = false;
+                storyScript[16].suspense = false;
+                
+                // 延遲一秒切入最終通關劇情
+                setTimeout(() => {
+                    renderStoryNode(17);
+                }, 1000);
+            } else {
+                document.getElementById('secret-path').style.display = 'none';
             }
+        }
+
+        // --- 結尾轉場 ---
+        function triggerGameEnd() {
+            dialogBox.style.display = 'none';
+            const fadeLayer = document.getElementById('fade-layer');
+            const titleCard = document.getElementById('title-card');
+            
+            fadeLayer.style.pointerEvents = 'auto';
+            fadeLayer.style.opacity = 1;
+            
+            setTimeout(() => {
+                titleCard.style.opacity = 1;
+            }, 1000);
         }
     </script>
 </body>
