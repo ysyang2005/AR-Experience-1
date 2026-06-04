@@ -2,255 +2,302 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>橘子剝皮綻放文字動畫特效</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新中式賽博 AR - 橘子綻放</title>
+    
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.0/dist/mindar-image-aframe.prod.js"></script>
+
     <style>
         body {
             margin: 0;
-            background-color: #0b0d10;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             overflow: hidden;
-            font-family: 'Georgia', serif;
         }
-        #canvasContainer {
-            position: relative;
-            width: 600px;
-            height: 600px;
+        /* 隱藏 MindAR 預設的加載界面，可自訂 */
+        .mindar-ui-loading {
+            background: rgba(11, 13, 16, 0.9) !important;
+            color: #dfb76c !important;
         }
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+        /* 提示用戶掃描耳環的 UI */
+        #scan-overlay {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(5px);
+            border: 1px solid #dfb76c;
+            color: #fff;
+            padding: 10px 20px;
+            font-family: sans-serif;
+            font-size: 14px;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            pointer-events: none;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-<div id="canvasContainer">
-    <canvas id="animationCanvas"></canvas>
-</div>
+    <div id="scan-overlay">請將相機對準【橙色陶瓷耳環】</div>
 
-<script>
-const canvas = document.getElementById('animationCanvas');
-const ctx = canvas.getContext('2d');
-
-const size = 600;
-canvas.width = size * window.devicePixelRatio;
-canvas.height = size * window.devicePixelRatio;
-ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
-// 核心控制中心（参数调节）
-const centerX = size / 2;
-const centerY = size / 2 + 50;
-const orangeRadius = 50;
-
-// 动画阶段状态机
-let globalTime = 0;
-const STAGE_GLOW = 0;      // 阶段0：散发微弱光芒 (0-120帧)
-const STAGE_PEEL = 1;      // 阶段1：橘子皮一瓣瓣剥下 (121-240帧)
-const STAGE_BLOOM = 2;     // 阶段2：生出花朵与小礼花 (241-360帧)
-const STAGE_TEXT = 3;      // 阶段3：缓缓浮现文字 (361帧以上)
-let currentStage = STAGE_GLOW;
-
-// 粒子与花朵数据源
-let particles = [];
-let flowers = [];
-let textAlpha = 0;
-let textYOffset = 0;
-
-// 1. 初始化花朵与粒子数据
-function initBlooms() {
-    // 内部核心分层小花
-    for (let i = 0; i < 6; i++) {
-        flowers.push({
-            angle: (Math.PI * 2 / 6) * i,
-            maxSize: 15 + Math.random() * 10,
-            currentSize: 0,
-            speed: 0.4 + Math.random() * 0.3,
-            color: i % 2 === 0 ? '#fff5f5' : '#ffd3d3'
-        });
-    }
-    // 礼花粒子
-    for (let i = 0; i < 60; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 1.5 + Math.random() * 3;
-        particles.push({
-            x: centerX,
-            y: centerY,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed - 1, // 带有一点上升重力
-            radius: 1.5 + Math.random() * 2,
-            color: `hsl(${Math.random() * 40 + 20}, 100%, 70%)`, // 金黄色、粉色系
-            alpha: 1,
-            decay: 0.015 + Math.random() * 0.02
-        });
-    }
-}
-
-// 2. 绘制上方的金属耳钩（还原图片中的悬挂感）
-function drawEarringHook() {
-    ctx.save();
-    ctx.strokeStyle = '#d4af37'; // 金色
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.shadowBlur = 4;
-    ctx.shadowColor = 'rgba(212, 175, 55, 0.3)';
-
-    // 耳环挂钩线条
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY - orangeRadius - 50);
-    ctx.quadraticCurveTo(centerX + 15, centerY - orangeRadius - 70, centerX + 5, centerY - orangeRadius - 100);
-    ctx.stroke();
-
-    // 挂环连接处
-    ctx.beginPath();
-    ctx.arc(centerX, centerY - orangeRadius - 10, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#d4af37';
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-}
-
-// 3. 核心动画循环
-function animate() {
-    ctx.clearRect(0, 0, size, size);
-    globalTime++;
-
-    // 判定动画进行阶段
-    if (globalTime <= 120) currentStage = STAGE_GLOW;
-    else if (globalTime > 120 && globalTime <= 240) currentStage = STAGE_PEEL;
-    else if (globalTime > 240 && globalTime <= 340) {
-        if (currentStage === STAGE_PEEL) initBlooms(); // 刚切换时初始化礼花
-        currentStage = STAGE_BLOOM;
-    } 
-    else if (globalTime > 340) currentStage = STAGE_TEXT;
-
-    // --- 绘制背景环境与挂钩 ---
-    drawEarringHook();
-
-    // --- 阶段0：计算并绘制橘子的微弱呼吸光芒 ---
-    let glowBlur = 10 + Math.sin(globalTime * 0.05) * 6;
-    
-    // --- 阶段1：计算橘子皮剥下的动画进度 (0 到 1) ---
-    let peelProgress = 0;
-    if (currentStage >= STAGE_PEEL) {
-        peelProgress = Math.min(1, (globalTime - 120) / 100);
-    }
-
-    // 绘制被剥开的橘子外皮（分成 6 瓣）
-    const petalCount = 6;
-    for (let i = 0; i < petalCount; i++) {
-        ctx.save();
-        ctx.translate(centerX, centerY);
+    <a-scene 
+        mindar-image="imageTargetSrc: ./earring.mind; autoStart: true; uiLoading: yes; uiScanning: yes;" 
+        color-space="sRGB" 
+        renderer="colorManagement: true, physicallyCorrectLights" 
+        vr-mode-ui="enabled: false" 
+        device-orientation-permission-ui="enabled: false">
         
-        // 旋转每一瓣外皮
-        const baseAngle = (Math.PI * 2 / petalCount) * i;
-        ctx.rotate(baseAngle);
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        // 计算剥开时的外翻位移和旋转
-        let peelYOffset = peelProgress * orangeRadius * 0.9;
-        let peelRot = peelProgress * Math.PI * 0.45;
+        <a-entity mindar-image-target="targetIndex: 0" id="earring-target">
+            
+            <a-plane 
+                id="ar-canvas-plane" 
+                position="0 0 0" 
+                rotation="0 0 0" 
+                width="1.5" 
+                height="1.5" 
+                material="shader: flat; src: #animationCanvas; transparent: true; opacity: 1;">
+            </a-plane>
 
-        ctx.translate(0, peelYOffset);
-        ctx.rotate(peelRot);
+        </a-entity>
+    </a-scene>
 
-        // 设置光芒
-        ctx.shadowBlur = glowBlur;
-        ctx.shadowColor = '#f97316';
+    <canvas id="animationCanvas" style="display: none;"></canvas>
 
-        // 绘制单瓣橘子皮贝塞尔曲线
-        ctx.beginPath();
-        ctx.moveTo(0, -orangeRadius);
-        ctx.bezierCurveTo(-orangeRadius * 0.5, -orangeRadius, -orangeRadius * 0.6, 0, 0, 0);
-        ctx.bezierCurveTo(orangeRadius * 0.6, 0, orangeRadius * 0.5, -orangeRadius, 0, -orangeRadius);
-        
-        ctx.fillStyle = '#f97316'; // 鲜亮橘色
-        ctx.fill();
+    <script>
+        // --- 核心控制中心（完全保留並適配你的 Canvas 代碼） ---
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
 
-        // 绘制单瓣内侧的白络（加强剥开的写实感）
-        ctx.beginPath();
-        ctx.moveTo(0, -orangeRadius + 5);
-        ctx.bezierCurveTo(-orangeRadius * 0.3, -orangeRadius + 5, -orangeRadius * 0.4, -5, 0, -5);
-        ctx.fillStyle = 'rgba(255, 245, 230, 0.4)';
-        ctx.fill();
+        // 固定 Canvas 分辨率（提供給 AR 貼圖高清晰度）
+        const size = 600;
+        canvas.width = size;
+        canvas.height = size;
 
-        ctx.restore();
-    }
+        const centerX = size / 2;
+        const centerY = size / 2 + 50;
+        const orangeRadius = 50;
 
-    // --- 阶段2：内部核心绽放花朵与小礼花 ---
-    if (currentStage >= STAGE_BLOOM) {
-        // 1. 绘制绽放的内部主花卉
-        flowers.forEach(f => {
-            if (f.currentSize < f.maxSize) f.currentSize += f.speed;
+        let globalTime = 0;
+        const STAGE_GLOW = 0;      
+        const STAGE_PEEL = 1;      
+        const STAGE_BLOOM = 2;     
+        const STAGE_TEXT = 3;      
+        let currentStage = STAGE_GLOW;
 
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.rotate(f.angle);
-            ctx.fillStyle = f.color;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#fff';
+        let particles = [];
+        let flowers = [];
+        let textAlpha = 0;
+        let textYOffset = 0;
+        let isTracking = false; // 用於判斷現實中是否正對準耳環
 
-            // 绘制精细五瓣花
-            for (let j = 0; j < 5; j++) {
-                ctx.rotate((Math.PI * 2) / 5);
-                ctx.beginPath();
-                ctx.ellipse(f.currentSize, 0, f.currentSize, f.currentSize / 2, 0, 0, Math.PI * 2);
-                ctx.fill();
+        function initBlooms() {
+            flowers = [];
+            particles = [];
+            for (let i = 0; i < 6; i++) {
+                flowers.push({
+                    angle: (Math.PI * 2 / 6) * i,
+                    maxSize: 15 + Math.random() * 10,
+                    currentSize: 0,
+                    speed: 0.4 + Math.random() * 0.3,
+                    color: i % 2 === 0 ? '#fff5f5' : '#ffd3d3'
+                });
             }
+            for (let i = 0; i < 60; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1.5 + Math.random() * 3;
+                particles.push({
+                    x: centerX,
+                    y: centerY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 1, 
+                    radius: 1.5 + Math.random() * 2,
+                    color: `hsl(${Math.random() * 40 + 20}, 100%, 70%)`, 
+                    alpha: 1,
+                    decay: 0.015 + Math.random() * 0.02
+                });
+            }
+        }
+
+        function drawEarringHook() {
+            ctx.save();
+            ctx.strokeStyle = '#d4af37'; 
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = 'rgba(212, 175, 55, 0.3)';
+
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY - orangeRadius - 50);
+            ctx.quadraticCurveTo(centerX + 15, centerY - orangeRadius - 70, centerX + 5, centerY - orangeRadius - 100);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - orangeRadius - 10, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#d4af37';
+            ctx.fill();
+            ctx.stroke();
             ctx.restore();
-        });
+        }
 
-        // 2. 渲染喷发扩散的礼花粒子
-        particles.forEach((p, idx) => {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.02; // 微弱重力
-            p.alpha -= p.decay;
+        // 核心渲染循環
+        function renderARLoop() {
+            // 清除畫布，注意在 AR 中我們需要透明背景，所以清除為全透明
+            ctx.clearRect(0, 0, size, size);
 
-            if (p.alpha > 0) {
+            // 只有當 AR 識別到耳環時，動畫才開始走時間軸
+            if (isTracking) {
+                globalTime++;
+            }
+
+            // 判定動畫進行階段
+            if (globalTime <= 120) currentStage = STAGE_GLOW;
+            else if (globalTime > 120 && globalTime <= 240) currentStage = STAGE_PEEL;
+            else if (globalTime > 240 && globalTime <= 340) {
+                if (currentStage === STAGE_PEEL) initBlooms(); 
+                currentStage = STAGE_BLOOM;
+            } 
+            else if (globalTime > 340) currentStage = STAGE_TEXT;
+
+            drawEarringHook();
+
+            let glowBlur = 10 + Math.sin(globalTime * 0.05) * 6;
+            let peelProgress = 0;
+            if (currentStage >= STAGE_PEEL) {
+                peelProgress = Math.min(1, (globalTime - 120) / 100);
+            }
+
+            const petalCount = 6;
+            for (let i = 0; i < petalCount; i++) {
                 ctx.save();
-                ctx.globalAlpha = p.alpha;
+                ctx.translate(centerX, centerY);
+                
+                const baseAngle = (Math.PI * 2 / petalCount) * i;
+                ctx.rotate(baseAngle);
+
+                let peelYOffset = peelProgress * orangeRadius * 0.9;
+                let peelRot = peelProgress * Math.PI * 0.45;
+
+                ctx.translate(0, peelYOffset);
+                ctx.rotate(peelRot);
+
+                ctx.shadowBlur = glowBlur;
+                ctx.shadowColor = '#f97316';
+
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = p.color;
+                ctx.moveTo(0, -orangeRadius);
+                ctx.bezierCurveTo(-orangeRadius * 0.5, -orangeRadius, -orangeRadius * 0.6, 0, 0, 0);
+                ctx.bezierCurveTo(orangeRadius * 0.6, 0, orangeRadius * 0.5, -orangeRadius, 0, -orangeRadius);
+                
+                ctx.fillStyle = '#f97316'; 
                 ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(0, -orangeRadius + 5);
+                ctx.bezierCurveTo(-orangeRadius * 0.3, -orangeRadius + 5, -orangeRadius * 0.4, -5, 0, -5);
+                ctx.fillStyle = 'rgba(255, 245, 230, 0.4)';
+                ctx.fill();
+
                 ctx.restore();
             }
+
+            if (currentStage >= STAGE_BLOOM) {
+                flowers.forEach(f => {
+                    if (f.currentSize < f.maxSize) f.currentSize += f.speed;
+
+                    ctx.save();
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(f.angle);
+                    ctx.fillStyle = f.color;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#fff';
+
+                    for (let j = 0; j < 5; j++) {
+                        ctx.rotate((Math.PI * 2) / 5);
+                        ctx.beginPath();
+                        ctx.ellipse(f.currentSize, 0, f.currentSize, f.currentSize / 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                });
+
+                particles.forEach((p) => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.02; 
+                    p.alpha -= p.decay;
+
+                    if (p.alpha > 0) {
+                        ctx.save();
+                        ctx.globalAlpha = p.alpha;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = p.color;
+                        ctx.shadowBlur = 5;
+                        ctx.shadowColor = p.color;
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                });
+            }
+
+            if (currentStage >= STAGE_TEXT) {
+                if (textAlpha < 1) textAlpha += 0.015;     
+                if (textYOffset > -40) textYOffset -= 0.5; 
+
+                ctx.save();
+                ctx.globalAlpha = textAlpha;
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 32px Georgia, serif'; // AR 放大字體適配
+                ctx.fillStyle = '#dfb76c';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(223, 183, 108, 0.8)';
+                
+                ctx.fillText('Tom, I Miss U', centerX, centerY - orangeRadius - 130 + textYOffset);
+                ctx.restore();
+            }
+
+            // 【非常重要】通知 A-Frame 刷新 Canvas 貼圖紋理，否則 AR 畫面會卡住不動
+            const plane = document.getElementById('ar-canvas-plane');
+            if (plane && plane.getObject3D('mesh')) {
+                const material = plane.getObject3D('mesh').material;
+                if (material && material.map) {
+                    material.map.needsUpdate = true;
+                }
+            }
+
+            requestAnimationFrame(renderARLoop);
+        }
+
+        // --- MindAR 監聽事件：控制動畫何時播放/重置 ---
+        const targetEntity = document.getElementById('earring-target');
+        const overlayText = document.getElementById('scan-overlay');
+
+        // 1. 當現實中【識別到】耳環時
+        targetEntity.addEventListener("targetFound", event => {
+            console.log("耳環識別成功！展開動畫開始");
+            isTracking = true;
+            overlayText.style.display = "none"; // 隱藏提示
         });
-    }
 
-    // --- 阶段3：缓缓浮现金色高雅文字 ---
-    if (currentStage >= STAGE_TEXT) {
-        if (textAlpha < 1) textAlpha += 0.015;     // 淡入
-        if (textYOffset > -40) textYOffset -= 0.5; // 缓缓向上漂移
+        // 2. 當耳環【離開視線】時
+        targetEntity.addEventListener("targetLost", event => {
+            console.log("耳環離開視線，重置動畫");
+            isTracking = false;
+            // 重置所有動畫狀態機，以便下次對準時重新播放
+            globalTime = 0;
+            textAlpha = 0;
+            textYOffset = 0;
+            currentStage = STAGE_GLOW;
+            overlayText.style.display = "block"; // 重新顯示提示
+        });
 
-        ctx.save();
-        ctx.globalAlpha = textAlpha;
-        ctx.textAlign = 'center';
-        
-        // 浪漫英文字体金光特效
-        ctx.font = 'bold 28px Georgia, serif';
-        ctx.fillStyle = '#dfb76c';
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = 'rgba(223, 183, 108, 0.8)';
-        
-        // 绘制文字
-        ctx.fillText('Tom, I Miss U', centerX, centerY - orangeRadius - 130 + textYOffset);
-        ctx.restore();
-    }
-
-    requestAnimationFrame(animate);
-}
-
-// 启动动画
-animate();
-</script>
-
+        // 啟動渲染
+        renderARLoop();
+    </script>
 </body>
 </html>
