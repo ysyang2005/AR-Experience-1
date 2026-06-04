@@ -1,699 +1,230 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>鏡海字盤 - 序幕完整指令修正版</title>
-    <style>
-        /* 全面屏重置 */
-        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; -webkit-user-select: none; }
-        body, html {
-            width: 100%; height: 100%;
-            background-color: #000000;
-            font-family: 'Courier New', Courier, monospace, "Microsoft YaHei", serif;
-            overflow: hidden;
-            color: #ffffff;
-        }
-
-        #game-container {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background: #000000;
-            transition: background 2s ease;
-        }
-
-        /* 時空扭曲背景特效 (場景二激活) */
-        .space-distorted {
-            background: radial-gradient(circle at center, #1c130e 0%, #070504 100%) !important;
-        }
-
-        /* ================= 頂部紀事與對話艙 ================= */
-        .top-chronicle-panel {
-            width: 100%;
-            background: linear-gradient(to bottom, #050302 85%, rgba(5,3,2,0.9) 100%);
-            border-bottom: 2px solid #2d1b13;
-            padding: 16px 16px 12px 16px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.9);
-            z-index: 10;
-            transition: border-color 1.5s ease;
-        }
-
-        .meta-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            opacity: 0;
-            transition: opacity 1s ease;
-        }
-        .meta-row.visible { opacity: 1; }
-        .chapter-tag { color: #8c7355; font-size: 11px; letter-spacing: 2px; font-weight: bold; }
-        .terminal-status { color: #a0a0a0; font-size: 11px; font-weight: bold; border: 1px solid rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 12px; transition: all 0.5s; }
-
-        .chronicle-vault {
-            background: rgba(15, 10, 7, 0.8);
-            border: 1px solid #2d1b13;
-            border-left: 3px solid #8c7355;
-            padding: 12px 14px;
-            border-radius: 4px;
-            margin-bottom: 12px;
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
-            transition: all 1s;
-        }
-        .story-stream {
-            color: #d1d5db;
-            font-size: 13.5px;
-            line-height: 1.6;
-            letter-spacing: 1px;
-            min-height: 105px;
-            max-height: 115px;
-            overflow-y: auto;
-        }
-        .npc-name { color: #ff6347; font-weight: bold; }
-        .system-warn { color: #ffd700; font-weight: bold; animation: pulse 1s infinite alternate; }
-
-        .anchor-zone {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-top: 1px dashed rgba(90, 61, 40, 0);
-            padding-top: 8px;
-            opacity: 0;
-            transition: all 1s ease;
-        }
-        .anchor-zone.visible { opacity: 1; border-top-color: rgba(90, 61, 40, 0.4); }
-        .anchor-label { color: #8c7355; font-size: 11px; font-weight: bold; }
-        .word-tray { display: flex; gap: 6px; }
-        .letter-slot {
-            width: 26px; height: 26px;
-            border: 1.5px dashed #3d251a; color: #3d251a;
-            display: flex; justify-content: center; align-items: center;
-            font-weight: bold; font-size: 13px; transition: all 0.5s ease;
-        }
-        .letter-slot.achieved {
-            border-color: #ffd700; color: #ffd700;
-            text-shadow: 0 0 8px #ffd700; box-shadow: inset 0 0 6px rgba(255,215,0,0.25);
-        }
-
-        /* ================= 中間：物理活字盤 ================= */
-        .game-viewport {
-            flex-grow: 1;
-            width: 100%;
-            padding: 12px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            transition: opacity 1.5s ease;
-        }
-        .game-viewport.visible { opacity: 1; }
-
-        .wood-tray {
-            position: relative;
-            width: 100%; height: 100%;
-            max-width: 420px;
-            background: #140d0a;
-            border: 12px solid #2d1b13;
-            border-image: linear-gradient(to bottom, #3d251a, #1c110b) 12;
-            box-shadow: inset 0 8px 30px rgba(0,0,0,0.95), 0 12px 25px rgba(0,0,0,0.8);
-            overflow: hidden;
-        }
-
-        #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-
-        .drop-indicator {
-            position: absolute; top: 0; left: 0; width: 100%; height: 35px;
-            border-bottom: 1px dashed rgba(140, 115, 85, 0.15);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            color: #6b533d; font-size: 10px; z-index: 5; pointer-events: none;
-        }
-
-        /* 右下角懸浮資產 */
-        .token-counter {
-            position: absolute; bottom: 20px; right: 20px;
-            background: rgba(5, 3, 2, 0.9);
-            border: 1px solid #5a3d28;
-            padding: 6px 14px; border-radius: 20px;
-            color: #8c7355; font-size: 12px; font-weight: bold;
-            display: flex; align-items: center; gap: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.8);
-            z-index: 100;
-            opacity: 0;
-            transition: all 1s ease;
-        }
-        .token-counter.visible { opacity: 1; }
-        .token-counter.active { border-color: #ffd700; color: #ffd700; text-shadow: 0 0 6px #ffd700; }
-
-        /* 授權進入遮罩 */
-        #auth-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000000; z-index: 1000;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            padding: 30px; text-align: center;
-        }
-        .auth-btn {
-            background: #ffd700; color: #000000; border: none; padding: 14px 32px;
-            font-size: 15px; font-weight: bold; border-radius: 4px; cursor: pointer;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2); margin-top: 30px;
-            letter-spacing: 1px;
-        }
-
-        @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
-    </style>
+    <title>釉中之秘：瓷藝迷蹤 - 序幕腳本</title>
 </head>
 <body>
 
-    <div id="auth-overlay">
-        <h2 style="color: #ffd700; margin-bottom: 15px; font-family: serif; letter-spacing: 2px;">【觀測者終端指令同步】</h2>
-        <p style="color: #8c7355; font-size: 13px; line-height: 1.6; max-width: 290px;">
-            本版本包含完整的序幕劇情指令流。<br>
-            請允許終端接入手機重力傳感器，並調大音量以監聽實時合成的歷史共鳴音效。
-        </p>
-        <button class="auth-btn" onclick="executeSystemInit()">接入重力儀並啟動指令</button>
-    </div>
+    <!-- 遊戲主容器 -->
+    <div id="game-container" data-scene="prologue">
 
-    <div id="game-container">
-        <div class="token-counter" id="token-widget">🪙 Tokens: <span id="token-count">0</span></div>
-
-        <div class="top-chronicle-panel">
-            <div class="meta-row" id="meta-row">
-                <div>
-                    <span class="chapter-tag" id="chapter-tag">序幕：時空坍塌之兆</span>
-                    <h1 style="color: #ffffff; font-size: 15px; font-weight: bold; margin-top: 1px;" id="level-tag">時空數據載入中</h1>
-                </div>
-                <div class="terminal-status" id="terminal-status">監聽中 📡</div>
+        <!-- ================================================================= -->
+        <!-- 【場景 1：深夜的修復工坊】                                         -->
+        <!-- ================================================================= -->
+        <section id="scene-1" class="game-scene active" data-background="repair_workshop_night.jpg">
+            <!-- 環境音效與初期指令 -->
+            <div class="system-commands">
+                <audio data-action="play-loop" src="audio/ambient_rain_clock.mp3" volume="0.6"></audio>
+                <div data-action="camera-pan" data-target="#work-desk" data-speed="slow"></div>
             </div>
 
-            <div class="chronicle-vault" id="chronicle-vault">
-                <div class="story-stream" id="story-stream"></div>
-            </div>
-
-            <div class="anchor-zone" id="anchor-zone">
-                <div class="anchor-label">時空歷史錨定槽：</div>
-                <div class="word-tray">
-                    <div class="letter-slot" id="slot-M">M</div>
-                    <div class="letter-slot" id="slot-A">A</div>
-                    <div class="letter-slot" id="slot-C">C</div>
-                    <div class="letter-slot" id="slot-A2">A</div>
-                    <div class="letter-slot" id="slot-U">U</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="game-viewport" id="game-viewport">
-            <div class="wood-tray" id="tray-element">
-                <div class="drop-indicator">
-                    <span id="sensor-status">📱 傾斜手機平移 | 2.5秒定時下落</span>
-                    <span id="shake-status" style="color: #ff6347; font-weight: bold; display: none;">[檢測到地軸震盪！]</span>
-                </div>
-                <canvas id="gameCanvas"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // ================= AUDIO ENGINE (Web Audio API 實時音效合成) =================
-        let audioCtx = null;
-        function initAudio() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        function playSynthSFX(type) {
-            if (!audioCtx) return;
-            // 處理音頻上下文暫停狀態（現代瀏覽器安全策略要求）
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            let now = audioCtx.currentTime;
-            if (type === 'typewriter') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(120 + Math.random() * 400, now);
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-                osc.start(now); osc.stop(now + 0.04);
-            } else if (type === 'bell') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(110, now);
-                osc.frequency.exponentialRampToValueAtTime(55, now + 2);
-                gain.gain.setValueAtTime(0.6, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 3);
-                osc.start(now); osc.stop(now + 3);
-            } else if (type === 'clack') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(180, now);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-                osc.start(now); osc.stop(now + 0.08);
-            } else if (type === 'resonance') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(330, now);
-                osc.frequency.linearRampToValueAtTime(440, now + 0.2);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-                osc.start(now); osc.stop(now + 0.4);
-            } else if (type === 'implosion') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(600, now);
-                osc.frequency.exponentialRampToValueAtTime(40, now + 1.5);
-                gain.gain.setValueAtTime(0.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
-                osc.start(now); osc.stop(now + 1.8);
-            }
-        }
-
-        // ================= 核心指令流數據配置 =================
-        const scriptCommands = [
-            // 【場景一】
-            { cmd: "BACKGROUND", value: "#000000" },
-            { cmd: "TYPEWRITER", text: "大航海時代，西元十六世紀中葉。" },
-            { cmd: "TYPEWRITER", text: "一艘遭遇風暴的葡萄牙商船，在中國南方的一座半島緩慢靠岸。" },
-            { cmd: "TYPEWRITER", text: "水手們驚魂未定地環顧這片陌生的土地，看見了當地的海神廟宇。" },
-            { cmd: "TYPEWRITER", text: "他們用蹩腳的語言詢問當地的漁民：『這是哪裡？』" },
-            { cmd: "TYPEWRITER", text: "漁民以為他們在問那座廟宇，便回答：『媽閣（Ma-Gok）。』" },
-            { cmd: "SFX", value: "bell" },
-            { cmd: "TYPEWRITER", text: "<span style='color:#ffd700; font-size:16px; font-weight:bold; text-shadow:0 0 8px #ffd700;'>於是，西方人的航海圖上，從此多了一個永恆的坐標 —— MACAU。</span>" },
-            { cmd: "WAIT", duration: 2000 },
-            { cmd: "CLEAR", value: true },
-
-            // 【場景二】
-            { cmd: "BACKGROUND", value: "DISTORTED" },
-            { cmd: "META_SHOW", value: true },
-            { cmd: "TYPEWRITER", text: "文字，是人類文明最強大的『錨』。" },
-            { cmd: "TYPEWRITER", text: "每一個歷史的關鍵節點，每一次文化的交融，都是由特定的詞彙在時空長河中牢牢釘住的。" },
-            { cmd: "TYPEWRITER", text: "只要文字不滅，歷史便會按部就班地向前流淌。" },
-            { cmd: "SHAKE_SCREEN", duration: 1500 },
-            { cmd: "TYPEWRITER", text: "但在西元2026年的今天，一場未知的引力潮汐席捲了這片被稱為『鏡海』的交界之地。" },
-            { cmd: "TYPEWRITER", text: "時空發生了無法逆轉的塌陷。" },
-            { cmd: "TYPEWRITER", text: "這座城市四百年的璀璨歷史、那些被文字記載的記憶，在一瞬間被震碎成了地表最底層的無序代碼。" },
-            { cmd: "TYPEWRITER", text: "歷史失去了錨點，世界正逐漸陷入一片混沌與虛無……" },
-            { cmd: "WAIT", duration: 1500 },
-            { cmd: "CLEAR", value: true },
-
-            // 【場景三】
-            { cmd: "LEVEL_ACTIVE", value: true },
-            { cmd: "TYPEWRITER", text: "<span class='npc-name'>黑市老闆（聲音沙啞）</span>：『別發呆了，新來的觀測者。看看你的眼前吧，時空的碎片已經化成字塊，快要從這個活字盤裡滿出來了。』" },
-            { cmd: "TYPEWRITER", text: "<span class='npc-name'>黑市老闆</span>：『如果放任這些亂碼堆積，四百年的歷史將會徹底蒸發，我們誰也無法離開這個時空死結。』" },
-            { cmd: "TYPEWRITER", text: "<span class='npc-name'>黑市老闆</span>：『動起你的終端，根據這片空間的物理重力，把相同的字母撞在一起。記住，這不是遊戲，你每讓一對字母融合，就是在重組一段破碎的記憶。現在，我們要拼出第一個被震碎的時空支點，把它重新釘回歷史的軌道上——』" },
-            { cmd: "UI_ANCHOR_ACTIVE", value: true },
-            { cmd: "START_GAME", value: true }
-        ];
-
-        let currentCmdIndex = 0;
-        const streamContainer = document.getElementById('story-stream');
-
-        function executeNextCommand() {
-            if (currentCmdIndex >= scriptCommands.length) return;
-            let item = scriptCommands[currentCmdIndex];
-
-            if (item.cmd === "BACKGROUND") {
-                if (item.value === "DISTORTED") {
-                    document.getElementById('game-container').classList.add('space-distorted');
-                    isMatrixActive = true; 
-                }
-                currentCmdIndex++; executeNextCommand();
-            } 
-            else if (item.cmd === "TYPEWRITER") {
-                typeWriterExecution(item.text, () => {
-                    currentCmdIndex++;
-                    setTimeout(executeNextCommand, 600);
-                });
-            } 
-            else if (item.cmd === "SFX") {
-                playSynthSFX(item.value);
-                currentCmdIndex++; executeNextCommand();
-            } 
-            else if (item.cmd === "WAIT") {
-                setTimeout(() => { currentCmdIndex++; executeNextCommand(); }, item.duration);
-            } 
-            else if (item.cmd === "CLEAR") {
-                streamContainer.innerHTML = "";
-                currentCmdIndex++; executeNextCommand();
-            } 
-            else if (item.cmd === "META_SHOW") {
-                document.getElementById('meta-row').classList.add('visible');
-                currentCmdIndex++; executeNextCommand();
-            }
-            else if (item.cmd === "SHAKE_SCREEN") {
-                const tray = document.getElementById('game-container');
-                tray.style.transform = `translate(4px, 4px)`;
-                setTimeout(() => tray.style.transform = 'none', 150);
-                currentCmdIndex++; executeNextCommand();
-            }
-            else if (item.cmd === "LEVEL_ACTIVE") {
-                document.getElementById('level-tag').innerText = "第一局 · 字塊初落";
-                document.getElementById('chronicle-vault').style.borderLeftColor = "#ff6347";
-                document.getElementById('game-viewport').classList.add('visible');
-                document.getElementById('token-widget').classList.add('visible');
-                resizeCanvas();
-                currentCmdIndex++; executeNextCommand();
-            }
-            else if (item.cmd === "UI_ANCHOR_ACTIVE") {
-                document.getElementById('anchor-zone').classList.add('visible');
-                currentCmdIndex++; executeNextCommand();
-            }
-            else if (item.cmd === "START_GAME") {
-                document.getElementById('terminal-status').innerText = "核心實操 🎮";
-                document.getElementById('terminal-status').style.color = "#ff6347";
-                document.getElementById('terminal-status').style.borderColor = "#ff6347";
-                streamContainer.innerHTML += "<br><span class='system-warn'>【系統提示：已同步感應器。利用設備左右傾斜平移控制字母落點】</span>";
-                streamContainer.scrollTop = streamContainer.scrollHeight;
+            <!-- 劇情對白與文本 -->
+            <article class="story-flow">
+                <p class="system-text" data-time="00:00">2026年6月4日，午夜。暴雨。</p>
                 
-                isGameRunning = true;
-                spawnBlock();
-                setInterval(autoDropBlock, 2500);
-            }
-        }
+                <dialog data-character="林言" data-expression="thoughtful">
+                    <span class="voice-over">「修復大師高嶺（爺爺）去世後的第三個月，工坊的生意大不如前。在這個快節奏的時代，已經很少有人願意花幾個月的時間，去等待一件破碎的瓷器重獲新生了。」</span>
+                </dialog>
 
-        function typeWriterExecution(htmlText, callback) {
-            let tempDiv = document.createElement('div');
-            tempDiv.innerHTML = htmlText;
-            let nodes = Array.from(tempDiv.childNodes);
+                <!-- 觸發突發事件 -->
+                <div class="trigger-event" data-delay="3000">
+                    <audio data-action="play-once" src="audio/door_knock.mp3" volume="1.0"></audio>
+                    <dialog data-character="林言" data-expression="surprised">
+                        <span class="voice-over">「誰會在這種大雨天深夜造訪？」</span>
+                    </dialog>
+                </div>
+            </article>
+
+            <!-- 玩家交互區域 -->
+            <div class="interaction-zone">
+                <button type="button" class="interactive-obj" data-id="workshop_door" data-action="click" data-next-target="#scene-2">
+                    點擊打開大門
+                </button>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- 【場景 2：開箱與驚艷】                                            -->
+        <!-- ================================================================= -->
+        <section id="scene-2" class="game-scene" data-background="work_desk_close_up.jpg">
+            <div class="system-commands">
+                <audio data-action="play-once" src="audio/door_creak.mp3"></audio>
+                <div data-action="show-text" data-content="門外空無一人，只有一個被防水布包裹的快遞木盒靜靜地躺在風雨中。收件人寫著你的名字。"></div>
+            </div>
+
+            <div class="interaction-zone">
+                <!-- 木盒互動 -->
+                <div id="wooden-box" class="interactive-obj" data-state="closed">
+                    <button type="button" data-action="interact" data-on-click="open-box">拆封包裹</button>
+                </div>
+            </div>
+
+            <!-- 木盒開啟後的內容展示 -->
+            <div id="box-content" class="hidden-element" data-trigger-on="open-box">
+                <audio data-action="play-once" src="audio/box_open_silk.mp3"></audio>
+                <!-- 特寫鏡頭引導至 image_5a308a.jpg -->
+                <figure class="item-showcase" data-focus="earrings">
+                    <img src="image_5a308a.jpg" alt="落日橙陶瓷耳環">
+                    <figcaption class="system-text">
+                        木盒內鋪著厚厚的黑色天鵝絨。靜靜躺在中央的，是一對橙色的圓珠陶瓷耳環。它飽滿、圓潤，在昏暗的檯燈下折射出強烈的高光澤感。
+                    </figcaption>
+                </figure>
+
+                <article class="story-flow">
+                    <dialog data-character="林言" data-expression="amazed">
+                        <span class="voice-over">「這是……瓷器？不，普通的釉料絕不可能在這種強度的光線下呈現出如此深邃、純粹的橙色。這光澤……簡直就像活著一樣。」</span>
+                    </dialog>
+                </article>
+
+                <!-- 引導玩家拾取道具 -->
+                <div class="interaction-zone">
+                    <button type="button" class="collect-item-btn" data-item-id="sunset_orange_earrings" data-action="click" data-next-target="#scene-3">
+                        仔細觀察並收起耳環
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- 【場景 3：殘圖與加密日誌】                                         -->
+        <!-- ================================================================= -->
+        <section id="scene-3" class="game-scene" data-background="work_desk_with_items.jpg">
+            <div class="system-commands">
+                <!-- 道具入包與介面解鎖 -->
+                <div data-action="inventory-add" data-item="sunset_orange_earrings"></div>
+                <div data-action="ui-unlock" data-target="#inventory-bar"></div>
+            </div>
+
+            <article class="story-flow">
+                <p class="system-text">你在天鵝絨墊層下，發現了一張邊緣焦黑的殘缺地圖，以及一本外皮磨損嚴重的筆記本。</p>
+                <dialog data-character="林言" data-expression="puzzled">
+                    <span class="voice-over">「這地圖的材質是手工宣紙，上面畫的是……景德鎮周邊的古窯址？而這本筆記……天哪，這是我爺爺失蹤多年的【修復日誌】！」</span>
+                </dialog>
+            </article>
+
+            <!-- 日誌互動面板 -->
+            <div id="diary-panel" class="interactive-ui">
+                <button type="button" data-action="click" data-trigger="read-diary">翻開日誌第一頁</button>
+                
+                <blockquote class="diary-content hidden-element" data-trigger-on="read-diary">
+                    <p class="handwritten-text">
+                        「『鳳凰鳴矣，于彼高岡。』世人皆知青瓷翠綠、白瓷無瑕，卻不知在大明宣德年間，曾有一抹驚世駭俗的『鳳凰釉』。其色如烈火落日，工藝早已失傳。若你看到這篇日誌，說明那對耳環已落入你手。林言，不要試圖尋找我，除非你能解開它身上的謎題……」
+                    </p>
+                </blockquote>
+            </div>
+
+            <article class="story-flow hidden-element" data-trigger-on="read-diary">
+                <dialog data-character="林言" data-expression="determined">
+                    <span class="voice-over">「爺爺……你到底瞞著我做了什麼？這對耳環就是解開『鳳凰釉』和您去向的鑰匙嗎？」</span>
+                </dialog>
+                <div class="interaction-zone">
+                    <button type="button" data-action="click" data-next-target="#scene-4-puzzle">進入工作檯解密模式</button>
+                </div>
+            </article>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- 【場景 4：首次解密交互（新手引導模式）】                              -->
+        <!-- ================================================================= -->
+        <section id="scene-4-puzzle" class="game-scene puzzle-mode" data-layout="split-screen">
             
-            let currentNodeIndex = 0;
-            let currentCharIndex = 0;
-            let currentPara = document.createElement('p');
-            currentPara.style.marginBottom = "8px";
-            streamContainer.appendChild(currentPara);
+            <!-- 核心提示與引導 -->
+            <header class="puzzle-header">
+                <p class="guide-tip">【引導提示】：請將【落日橙陶瓷耳環】拖拽至工作檯中央，開啟結構分析。</p>
+            </header>
 
-            function typeNode() {
-                if (currentNodeIndex >= nodes.length) {
-                    streamContainer.scrollTop = streamContainer.scrollHeight;
-                    callback(); return;
-                }
-                let node = nodes[currentNodeIndex];
-                if (node.nodeType === Node.TEXT_NODE) {
-                    if (currentCharIndex < node.textContent.length) {
-                        currentPara.innerHTML += node.textContent.charAt(currentCharIndex);
-                        currentCharIndex++;
-                        playSynthSFX('typewriter');
-                        streamContainer.scrollTop = streamContainer.scrollHeight;
-                        // 已修正此處原先的 3s0 語法錯誤
-                        setTimeout(typeNode, 30 + Math.random() * 30);
-                    } else {
-                        currentNodeIndex++; currentCharIndex = 0; typeNode();
-                    }
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                    let span = node.cloneNode(false);
-                    currentPara.appendChild(span);
-                    let txt = node.textContent;
-                    let i = 0;
-                    function typeElementText() {
-                        if (i < txt.length) {
-                            span.innerHTML += txt.charAt(i); i++;
-                            playSynthSFX('typewriter');
-                            streamContainer.scrollTop = streamContainer.scrollHeight;
-                            setTimeout(typeElementText, 30);
-                        } else {
-                            currentNodeIndex++; typeNode();
-                        }
-                    }
-                    typeElementText();
-                }
-            }
-            typeNode();
-        }
+            <!-- 交互解謎核心區域（結構對應網頁解密玩法） -->
+            <div class="puzzle-workspace">
+                
+                <!-- 左側：釉層剖面圖（材料書籍互動） -->
+                <div id="left-panel-book" class="workspace-panel" data-source="materials_book">
+                    <h3>【材料物理結構分析】</h3>
+                    <div class="glaze-layers">
+                        <div class="layer" data-layer-index="5">外釉層 (Outer Glaze)</div>
+                        <div class="layer active-target" data-layer-index="4" data-puzzle-id="question_1">
+                            第三層：鳳凰釉 (Hidden Layer)
+                        </div>
+                        <div class="layer" data-layer-index="3">內釉層 (Inner Glaze)</div>
+                        <div class="layer" data-layer-index="2">化妝土 (Engobe)</div>
+                        <div class="layer" data-layer-index="1">瓷胎骨 (Porcelain Body)</div>
+                    </div>
+                    <p class="question-text" data-id="q1">謎題一：第三層釉中隱藏著什麼秘密？</p>
+                </div>
 
-        // ================= ENGINE RUNTIME (Canvas 物理核心) =================
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const trayElement = document.getElementById('tray-element');
+                <!-- 中央：核心耳環主體 -->
+                <div id="center-panel-item" class="workspace-panel">
+                    <div class="drop-zone" data-accept="sunset_orange_earrings">
+                        <img id="main-earring-target" src="image_5a308a.jpg" alt="互動核心耳環">
+                    </div>
+                </div>
 
-        let WIDTH = 400; let HEIGHT = 500;
-        function resizeCanvas() {
-            if(!document.getElementById('game-viewport').classList.contains('visible')) return;
-            WIDTH = trayElement.clientWidth - 24; HEIGHT = trayElement.clientHeight - 24;
-            canvas.width = WIDTH; canvas.height = HEIGHT;
-        }
+                <!-- 右側：地圖、羅盤與工具箱 -->
+                <div id="right-panel-tools" class="workspace-panel">
+                    <!-- 微觀放大鏡工具 -->
+                    <div id="tool-magnifier" class="draggable-tool" data-tool-type="lens" data-target="#main-earring-target">
+                        <span class="label">微觀放大鏡</span>
+                    </div>
 
-        let blocks = []; let particles = []; let tokens = 0;
-        let currentBlock = null; let isGameRunning = false; let isAttracting = false;
-        let collectedLetters = { M: false, A: false, C: false, U: false };
-        let tiltX = 0; let lastX = 0, lastY = 0, lastZ = 0; let isMatrixActive = false;
+                    <!-- 殘圖與羅盤區域 -->
+                    <div id="map-compass-area">
+                        <div id="mini-compass" class="rotatable-ui" data-angle="0" data-status="locked"></div>
+                        <div id="ancient-map" data-status="inactive">
+                            <span class="poi hidden-element" id="poi-hidden-path" data-coord="29.2,117.2">【御窯廠廢棄暗道】</span>
+                        </div>
+                    </div>
+                    <p class="question-text" data-id="q2">謎題二：「鳥兒指向古窯，但牠的巢穴在哪裡？」</p>
+                </div>
 
-        const MERGE_RULES = { 'M': 'A', 'A': 'C', 'C': 'U' };
-        const TEXTURE_COLORS = { 'M': '#cd7f32', 'A': '#b87333', 'C': '#a0522d', 'U': '#d4af37' };
+            </div>
 
-        function executeSystemInit() {
-            // 1. 初始化音頻引擎
-            try {
-                initAudio();
-            } catch(e) {
-                console.log("音頻初始化失敗:", e);
-            }
-            
-            // 隱藏權限遮罩
-            document.getElementById('auth-overlay').style.display = 'none';
-            
-            // 2. 請求重力儀權限（相容 iOS 13+ 嚴格安全隱私策略）
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(state => {
-                        if (state === 'granted') {
-                            bindSensors();
-                        } else {
-                            alert('⚠️ 權限被拒絕。終端降級為「點擊輔助」控制模式。');
-                            bindBackupControls();
-                        }
-                    })
-                    .catch(err => {
-                        console.log('感應器權限請求異常(可能非HTTPS連線):', err);
-                        // 當網址非 HTTPS 報錯時，啟動自動降級兼容，確保遊戲不卡死
-                        document.getElementById('sensor-status').innerText = `💻 降級模式 | 點擊木盤兩側可手動平移`;
-                        bindBackupControls();
-                    });
-            } else {
-                // PC 端、Android 舊版或部分 App 內嵌網頁，直接嘗試綁定
-                bindSensors();
-                // 如果是電腦瀏覽器打開，額外綁定鍵盤和點擊以防無法操作
-                bindBackupControls();
-            }
-            
-            // 3. 開啟指令管線
-            executeNextCommand();
-        }
+            <!-- 解謎邏輯檢測指令（引擎後台邏輯節點） -->
+            <div class="puzzle-logic-commands">
+                <!-- 步驟 1 檢測：當放大鏡拖拽至耳環上 -->
+                <div data-logic="on-drag-over" data-tool="#tool-magnifier" data-on="#main-earring-target">
+                    <audio data-action="play-once" src="audio/lens_focus.mp3"></audio>
+                    <div data-action="change-texture" data-target="#main-earring-target" src="image_micro_phoenix.jpg"></div>
+                    <div data-action="unlock-hint" data-content="在微觀釉層中發現了【鳳凰工匠馬克】，鳥頭指向東北方。"></div>
+                    <dialog data-character="林言">「看到了！在內釉與外釉之間，有一個微雕的鳳凰標記！這是一個指向某處的指針！」</dialog>
+                    <div data-action="activate" data-target="#mini-compass, #ancient-map"></div>
+                </div>
 
-        function bindSensors() {
-            window.addEventListener('deviceorientation', (e) => {
-                if (e.gamma !== null) {
-                    tiltX = Math.min(Math.max(e.gamma / 12, -2.8), 2.8);
-                    if(isGameRunning) document.getElementById('sensor-status').innerText = `📱 重力偏角: ${Math.round(e.gamma)}° | 運作正常`;
-                }
-            });
-            window.addEventListener('devicemotion', (e) => {
-                let acc = e.accelerationIncludingGravity; if (!acc) return;
-                let deltaX = Math.abs(acc.x - lastX); let deltaY = Math.abs(acc.y - lastY);
-                if ((deltaX > 14 && deltaY > 14)) {
-                    triggerTrayShakeCommand();
-                }
-                lastX = acc.x; lastY = acc.y;
-            });
-            window.addEventListener('resize', resizeCanvas);
-            requestAnimationFrame(renderLoop);
-        }
+                <!-- 步驟 2 檢測：當羅盤旋轉至東北方 (45度) 且點擊地圖對應坐標 -->
+                <div data-logic="on-ui-rotate" data-element="#mini-compass" data-target-angle="45">
+                    <audio data-action="play-once" src="audio/gear_click.mp3"></audio>
+                    <div data-action="show-element" data-target="#poi-hidden-path"></div>
+                    <div data-action="trigger-puzzled-solved" data-next-target="#scene-prologue-end"></div>
+                </div>
+            </div>
+        </section>
 
-        // 💡 降級與相容性控制方案：PC端或HTTP非安全連線時，支持鍵盤 AD 與點擊字盤兩側移動字塊
-        function bindBackupControls() {
-            window.addEventListener('keydown', (e) => {
-                if (e.key === 'a' || e.key === 'ArrowLeft') tiltX = -2;
-                if (e.key === 'd' || e.key === 'ArrowRight') tiltX = 2;
-            });
-            window.addEventListener('keyup', () => { tiltX = 0; });
-            
-            // 點擊木盤左半邊或右半邊實現平移
-            trayElement.addEventListener('touchstart', (e) => {
-                let touchX = e.touches[0].clientX - trayElement.getBoundingClientRect().left;
-                tiltX = touchX < (WIDTH / 2) ? -2 : 2;
-            });
-            trayElement.addEventListener('touchend', () => { tiltX = 0; });
-            
-            // 同步適應滑鼠點擊
-            trayElement.addEventListener('mousedown', (e) => {
-                let clickX = e.clientX - trayElement.getBoundingClientRect().left;
-                tiltX = clickX < (WIDTH / 2) ? -2 : 2;
-            });
-            window.addEventListener('mouseup', () => { tiltX = 0; });
+        <!-- ================================================================= -->
+        <!-- 【序幕尾聲：啟程】                                                -->
+        <!-- ================================================================= -->
+        <section id="scene-prologue-end" class="game-scene">
+            <div class="system-commands">
+                <audio data-action="play-once" src="audio/diary_unlock_page.mp3"></audio>
+                <div data-action="camera-flash" color="white" duration="1000"></div>
+            </div>
 
-            window.addEventListener('resize', resizeCanvas);
-            requestAnimationFrame(renderLoop);
-        }
+            <article class="story-flow">
+                <p class="system-text">隨著一聲清脆的咔嗒聲，爺爺的日誌解鎖了新的一頁，上面赫然顯現出一個清晰的坐標與地名。</p>
+                
+                <dialog data-character="林言" data-expression="resolved">
+                    <span class="voice-over">「景德鎮御窯廠遺址，北緯 29.2°…… 鳳凰釉、神祕包裹、還有爺爺的下落。看來，我必須親自去一趟景德鎮了。」</span>
+                </dialog>
+            </article>
 
-        class Block {
-            constructor(x, letter) {
-                this.x = x; this.y = 25; this.letter = letter;
-                this.radius = letter === 'M' ? 20 : letter === 'A' ? 24 : letter === 'C' ? 28 : 34;
-                this.vx = 0; this.vy = 0; this.isStatic = true; this.mass = this.radius;
-            }
-            update() {
-                if (isAttracting) return;
-                if (this.isStatic) {
-                    this.x += tiltX * 2.3;
-                    if (this.x - this.radius < 0) this.x = this.radius;
-                    if (this.x + this.radius > WIDTH) this.x = WIDTH - this.radius;
-                } else {
-                    this.vy += 0.35; this.vx += tiltX * 0.12; this.vx *= 0.97;
-                    this.x += this.vx; this.y += this.vy;
-                    if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -0.22; }
-                    if (this.x + this.radius > WIDTH) { this.x = WIDTH - this.radius; this.vx *= -0.22; }
-                    if (this.y + this.radius > HEIGHT) { this.y = HEIGHT - this.radius; this.vy *= -0.22; this.vx *= 0.7; }
-                }
-            }
-            draw() {
-                ctx.save(); ctx.translate(this.x, this.y);
-                let grad = ctx.createRadialGradient(0, 0, this.radius*0.2, 0, 0, this.radius);
-                grad.addColorStop(0, '#ebd5b3'); grad.addColorStop(0.8, TEXTURE_COLORS[this.letter]); grad.addColorStop(1, '#000000');
-                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.fill();
-                ctx.strokeStyle = '#3d251a'; ctx.lineWidth = 1.5; ctx.stroke();
-                ctx.fillStyle = '#000000'; ctx.font = `bold ${this.radius * 1.1}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(this.letter, 1, 1); ctx.fillStyle = '#ffffff'; if(this.letter === 'U') ctx.fillStyle = '#ffd700';
-                ctx.fillText(this.letter, 0, 0); ctx.restore();
-            }
-        }
+            <!-- 轉場與存檔 -->
+            <div class="game-footer-commands">
+                <div data-action="fade-out" data-duration="2000" color="black"></div>
+                <div data-action="show-title-card" data-title="第一章：雨夜御窯" data-style="gold-serif"></div>
+                <div data-action="auto-save" data-slot="autosave_prologue_end"></div>
+                <button type="button" class="next-chapter-btn" onclick="window.location.reload();">進入第一章</button>
+            </div>
+        </section>
 
-        class Particle {
-            constructor(x, y, color, isCoin = false) {
-                this.x = x; this.y = y; this.color = color; this.isCoin = isCoin; this.alpha = 1;
-                let angle = Math.random() * Math.PI * 2; let speed = Math.random() * (isCoin ? 6 : 4) + 1;
-                this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-            }
-            update() { this.x += this.vx; this.y += this.vy; if(this.isCoin) this.vy += 0.15; this.alpha -= 0.02; }
-            draw() {
-                ctx.save(); ctx.globalAlpha = this.alpha; ctx.fillStyle = this.color;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.isCoin ? 3.5 : 1.5, 0, Math.PI*2); ctx.fill(); ctx.restore();
-            }
-        }
+    </div>
 
-        function spawnBlock() {
-            if (!isGameRunning || isAttracting) return;
-            currentBlock = new Block(WIDTH / 2, Math.random() > 0.3 ? 'M' : 'A');
-        }
-
-        function autoDropBlock() {
-            if (currentBlock && currentBlock.isStatic && !isAttracting) {
-                currentBlock.isStatic = false; currentBlock.vy = 2;
-                blocks.push(currentBlock); currentBlock = null;
-                setTimeout(spawnBlock, 600);
-            }
-        }
-
-        function triggerTrayShakeCommand() {
-            if (!isGameRunning || isAttracting) return;
-            document.getElementById('shake-status').style.display = 'inline';
-            blocks.forEach(b => { if(!b.isStatic) { b.vy -= Math.random()*4 + 5; b.vx += (Math.random()-0.5)*4; } });
-            trayElement.style.transform = `scale(0.97) translate(${(Math.random()-0.5)*10}px, ${(Math.random()-0.5)*10}px)`;
-            setTimeout(() => { trayElement.style.transform = 'none'; document.getElementById('shake-status').style.display = 'none'; }, 150);
-        }
-
-        function checkCollisions() {
-            for (let i = 0; i < blocks.length; i++) {
-                for (let j = i + 1; j < blocks.length; j++) {
-                    let b1 = blocks[i]; let b2 = blocks[j];
-                    let dx = b2.x - b1.x; let dy = b2.y - b1.y;
-                    let dist = Math.sqrt(dx*dx + dy*dy); let minDist = b1.radius + b2.radius;
-                    if (dist < minDist) {
-                        if (b1.letter === b2.letter && MERGE_RULES[b1.letter]) {
-                            let next = MERGE_RULES[b1.letter];
-                            let rx = (b1.x + b2.x)/2; let ry = (b1.y + b2.y)/2;
-                            blocks.splice(j, 1); blocks.splice(i, 1);
-                            let nb = new Block(rx, next); nb.isStatic = false; nb.y = ry;
-                            blocks.push(nb);
-                            playSynthSFX(next === 'U' ? 'resonance' : 'clack');
-                            for(let p=0; p<10; p++) particles.push(new Particle(rx, ry, '#ffd700'));
-                            updateAnchorUI(next); return;
-                        }
-                        let normalX = dx / dist; let normalY = dy / dist; let overlap = minDist - dist;
-                        b1.x -= normalX * overlap * 0.5; b1.y -= normalY * overlap * 0.5;
-                        let kx = b1.vx - b2.vx; let ky = b1.vy - b2.vy;
-                        let p = 2 * (normalX * kx + normalY * ky) / (b1.mass + b2.mass);
-                        b1.vx -= p * b2.mass * normalX * 0.5; b1.vy -= p * b2.mass * normalY * 0.5;
-                        b2.vx += p * b1.mass * normalX * 0.5; b2.vy += p * b1.mass * normalY * 0.5;
-                    }
-                }
-            }
-        }
-
-        function updateAnchorUI(letter) {
-            if(letter === 'A') { document.getElementById('slot-M').classList.add('achieved'); document.getElementById('slot-A').classList.add('achieved'); collectedLetters.M = true; collectedLetters.A = true; }
-            if(letter === 'C') { document.getElementById('slot-C').classList.add('achieved'); collectedLetters.C = true; }
-            if(letter === 'U') { document.getElementById('slot-A2').classList.add('achieved'); document.getElementById('slot-U').classList.add('achieved'); collectedLetters.U = true; }
-
-            if (collectedLetters.M && collectedLetters.A && collectedLetters.C && collectedLetters.U && !isAttracting) {
-                executeVictorySequenceCommand();
-            }
-        }
-
-        function executeVictorySequenceCommand() {
-            isAttracting = true;
-            playSynthSFX('implosion');
-            document.getElementById('terminal-status').innerText = "支點錨定 ⚡";
-            document.getElementById('terminal-status').style.color = "#ffd700";
-            document.getElementById('terminal-status').style.borderColor = "#ffd700";
-            streamContainer.innerHTML += "<br><span style='color:#ffd700; font-weight:bold;'>【核心指令：歷史支點 MACAU 已錨定。建立引力源，粉碎時空亂碼代碼...】</span>";
-            streamContainer.scrollTop = streamContainer.scrollHeight;
-
-            let cx = WIDTH / 2; let cy = HEIGHT / 2;
-            let attrTimer = setInterval(() => {
-                blocks.forEach(b => {
-                    let dx = cx - b.x; let dy = cy - b.y; let d = Math.sqrt(dx*dx + dy*dy);
-                    if(d > 8) { b.x += (dx/d)*6; b.y += (dy/d)*6; }
-                    else { for(let p=0; p<2; p++) particles.push(new Particle(b.x, b.y, '#ffd700')); }
-                });
-                particles.push(new Particle(cx + (Math.random()-0.5)*60, cy + (Math.random()-0.5)*60, 'rgba(255,215,0,0.2)'));
-            }, 20);
-
-            setTimeout(() => {
-                clearInterval(attrTimer); blocks = [];
-                document.getElementById('token-widget').classList.add('active');
-                for(let i=0; i<100; i++) {
-                    setTimeout(() => {
-                        particles.push(new Particle(cx, cy, '#ffd700', true));
-                        tokens++; document.getElementById('token-count').innerText = tokens;
-                    }, i * 15);
-                }
-                setTimeout(executePrologueEnding, 2000);
-            }, 1800);
-        }
-
-        function executePrologueEnding() {
-            streamContainer.innerHTML += "<br>";
-            typeWriterExecution("<span class='npc-name'>黑市老闆（吐出一口煙圈）</span>：『做得好。第一個歷史支點釘住了，紊亂的時空暫時穩定了下來。看來……你確實擁有修復這條鏡海歷史線的潛力。』", () => {
-                typeWriterExecution("<span class='npc-name'>黑市老闆</span>：『不過，這只是個開始。收好你的代幣，準備進入更古老的時空緯度吧。』", () => {
-                    streamContainer.innerHTML += "<br><span style='color:#a0a0a0;'>【序幕 · 完結 —— 正在載入第一章正式關卡】</span>";
-                    streamContainer.scrollTop = streamContainer.scrollHeight;
-                });
-            });
-        }
-
-        function renderLoop() {
-            ctx.clearRect(0, 0, WIDTH, HEIGHT);
-
-            if (isMatrixActive) {
-                ctx.fillStyle = "rgba(140, 115, 85, 0.04)";
-                for (let i = 0; i < 6; i++) {
-                    ctx.fillRect(Math.random() * WIDTH, 0, 1, HEIGHT);
-                }
-            }
-
-            if (currentBlock && currentBlock.isStatic) {
-                ctx.strokeStyle = 'rgba(140, 115, 85, 0.1)'; ctx.setLineDash([4, 4]);
-                ctx.beginPath(); ctx.moveTo(currentBlock.x, 0); ctx.lineTo(currentBlock.x, HEIGHT); ctx.stroke();
-                ctx.setLineDash([]); currentBlock.update(); currentBlock.draw();
-            }
-
-            blocks.forEach(b => { b.update(); b.draw(); });
-            checkCollisions();
-
-            for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update(); particles[i].draw();
-                if (particles[i].alpha <= 0) particles.splice(i, 1);
-            }
-            requestAnimationFrame(renderLoop);
-        }
-    </script>
 </body>
 </html>
