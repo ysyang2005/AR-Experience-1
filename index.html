@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>鏡海字盤 - 序幕完整指令版</title>
+    <title>鏡海字盤 - 序幕完整指令修正版</title>
     <style>
         /* 全面屏重置 */
         * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; -webkit-user-select: none; }
@@ -221,6 +221,10 @@
         }
         function playSynthSFX(type) {
             if (!audioCtx) return;
+            // 處理音頻上下文暫停狀態（現代瀏覽器安全策略要求）
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
@@ -228,14 +232,12 @@
 
             let now = audioCtx.currentTime;
             if (type === 'typewriter') {
-                // 打字機清脆木質聲合成
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(120 + Math.random() * 400, now);
                 gain.gain.setValueAtTime(0.15, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
                 osc.start(now); osc.stop(now + 0.04);
             } else if (type === 'bell') {
-                // 宏大歷史鐘聲合成
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(110, now);
                 osc.frequency.exponentialRampToValueAtTime(55, now + 2);
@@ -243,14 +245,12 @@
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 3);
                 osc.start(now); osc.stop(now + 3);
             } else if (type === 'clack') {
-                // 字塊常規物理碰撞聲
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(180, now);
                 gain.gain.setValueAtTime(0.3, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
                 osc.start(now); osc.stop(now + 0.08);
             } else if (type === 'resonance') {
-                // 高級字母合成共鳴音
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(330, now);
                 osc.frequency.linearRampToValueAtTime(440, now + 0.2);
@@ -258,7 +258,6 @@
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
                 osc.start(now); osc.stop(now + 0.4);
             } else if (type === 'implosion') {
-                // 大招黑洞引力坍塌碎裂聲
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(600, now);
                 osc.frequency.exponentialRampToValueAtTime(40, now + 1.5);
@@ -315,7 +314,7 @@
             if (item.cmd === "BACKGROUND") {
                 if (item.value === "DISTORTED") {
                     document.getElementById('game-container').classList.add('space-distorted');
-                    isMatrixActive = true; // 啟動背景全息代碼亂碼線
+                    isMatrixActive = true; 
                 }
                 currentCmdIndex++; executeNextCommand();
             } 
@@ -365,7 +364,6 @@
                 streamContainer.innerHTML += "<br><span class='system-warn'>【系統提示：已同步感應器。利用設備左右傾斜平移控制字母落點】</span>";
                 streamContainer.scrollTop = streamContainer.scrollHeight;
                 
-                // 激活物理世界運轉
                 isGameRunning = true;
                 spawnBlock();
                 setInterval(autoDropBlock, 2500);
@@ -395,12 +393,12 @@
                         currentCharIndex++;
                         playSynthSFX('typewriter');
                         streamContainer.scrollTop = streamContainer.scrollHeight;
-                        setTimeout(typeNode, 30 + Math.random()*3s0);
+                        // 已修正此處原先的 3s0 語法錯誤
+                        setTimeout(typeNode, 30 + Math.random() * 30);
                     } else {
                         currentNodeIndex++; currentCharIndex = 0; typeNode();
                     }
                 } else if (node.nodeType === Node.ELEMENT_NODE) {
-                    // 保留富文本標籤
                     let span = node.cloneNode(false);
                     currentPara.appendChild(span);
                     let txt = node.textContent;
@@ -442,17 +440,41 @@
         const TEXTURE_COLORS = { 'M': '#cd7f32', 'A': '#b87333', 'C': '#a0522d', 'U': '#d4af37' };
 
         function executeSystemInit() {
-            initAudio();
+            // 1. 初始化音頻引擎
+            try {
+                initAudio();
+            } catch(e) {
+                console.log("音頻初始化失敗:", e);
+            }
+            
+            // 隱藏權限遮罩
             document.getElementById('auth-overlay').style.display = 'none';
             
+            // 2. 請求重力儀權限（相容 iOS 13+ 嚴格安全隱私策略）
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission().then(state => {
-                    if (state === 'granted') bindSensors(); else bindSensors();
-                }).catch(() => bindSensors());
+                DeviceOrientationEvent.requestPermission()
+                    .then(state => {
+                        if (state === 'granted') {
+                            bindSensors();
+                        } else {
+                            alert('⚠️ 權限被拒絕。終端降級為「點擊輔助」控制模式。');
+                            bindBackupControls();
+                        }
+                    })
+                    .catch(err => {
+                        console.log('感應器權限請求異常(可能非HTTPS連線):', err);
+                        // 當網址非 HTTPS 報錯時，啟動自動降級兼容，確保遊戲不卡死
+                        document.getElementById('sensor-status').innerText = `💻 降級模式 | 點擊木盤兩側可手動平移`;
+                        bindBackupControls();
+                    });
             } else {
+                // PC 端、Android 舊版或部分 App 內嵌網頁，直接嘗試綁定
                 bindSensors();
+                // 如果是電腦瀏覽器打開，額外綁定鍵盤和點擊以防無法操作
+                bindBackupControls();
             }
-            // 開啟指令管線
+            
+            // 3. 開啟指令管線
             executeNextCommand();
         }
 
@@ -471,6 +493,32 @@
                 }
                 lastX = acc.x; lastY = acc.y;
             });
+            window.addEventListener('resize', resizeCanvas);
+            requestAnimationFrame(renderLoop);
+        }
+
+        // 💡 降級與相容性控制方案：PC端或HTTP非安全連線時，支持鍵盤 AD 與點擊字盤兩側移動字塊
+        function bindBackupControls() {
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'a' || e.key === 'ArrowLeft') tiltX = -2;
+                if (e.key === 'd' || e.key === 'ArrowRight') tiltX = 2;
+            });
+            window.addEventListener('keyup', () => { tiltX = 0; });
+            
+            // 點擊木盤左半邊或右半邊實現平移
+            trayElement.addEventListener('touchstart', (e) => {
+                let touchX = e.touches[0].clientX - trayElement.getBoundingClientRect().left;
+                tiltX = touchX < (WIDTH / 2) ? -2 : 2;
+            });
+            trayElement.addEventListener('touchend', () => { tiltX = 0; });
+            
+            // 同步適應滑鼠點擊
+            trayElement.addEventListener('mousedown', (e) => {
+                let clickX = e.clientX - trayElement.getBoundingClientRect().left;
+                tiltX = clickX < (WIDTH / 2) ? -2 : 2;
+            });
+            window.addEventListener('mouseup', () => { tiltX = 0; });
+
             window.addEventListener('resize', resizeCanvas);
             requestAnimationFrame(renderLoop);
         }
@@ -624,7 +672,6 @@
         function renderLoop() {
             ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-            // 背景全息數字流干擾線 (場景二指令觸發)
             if (isMatrixActive) {
                 ctx.fillStyle = "rgba(140, 115, 85, 0.04)";
                 for (let i = 0; i < 6; i++) {
