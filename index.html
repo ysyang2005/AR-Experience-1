@@ -3,301 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>新中式賽博 AR - 橘子綻放</title>
-    
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.0/dist/mindar-image-aframe.prod.js"></script>
-
+    <title>蒸汽齒輪與調頻收音機</title>
     <style>
+        :root {
+            --bronze: #8c6239;
+            --dark-copper: #3d2612;
+            --glow-green: #39ff14;
+        }
+
         body {
+            background-color: #110d0a;
+            color: #e0d5c1;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
             margin: 0;
             overflow: hidden;
         }
-        /* 隱藏 MindAR 預設的加載界面，可自訂 */
-        .mindar-ui-loading {
-            background: rgba(11, 13, 16, 0.9) !important;
-            color: #dfb76c !important;
-        }
-        /* 提示用戶掃描耳環的 UI */
-        #scan-overlay {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            background: rgba(20, 20, 20, 0.8);
-            backdrop-filter: blur(5px);
-            border: 1px solid #dfb76c;
-            color: #fff;
-            padding: 10px 20px;
-            font-family: sans-serif;
-            font-size: 14px;
-            letter-spacing: 1px;
-            border-radius: 4px;
+
+        .ambient-glow {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(57, 255, 20, 0.03) 0%, rgba(0,0,0,0) 70%);
+            z-index: 1;
             pointer-events: none;
+        }
+
+        .radio-container {
+            border: 6px double var(--bronze);
+            background: linear-gradient(145deg, #24170d, #140c06);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.6);
             text-align: center;
+            z-index: 10;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            color: var(--bronze);
+            text-shadow: 1px 1px 2px #000;
+            margin-bottom: 25px;
+        }
+
+        /* 綠光頻率螢幕 */
+        .frequency-display {
+            background-color: #081205;
+            border: 3px inset var(--dark-copper);
+            height: 80px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .signal-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: var(--glow-green);
+            box-shadow: 0 0 8px var(--glow-green);
+            opacity: 0.7;
+        }
+
+        .noise-active .signal-line {
+            animation: jitter 0.15s infinite;
+        }
+
+        .freq-text {
+            color: var(--glow-green);
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--glow-green);
+            z-index: 2;
+            letter-spacing: 3px;
+        }
+
+        /* 蒸汽旋鈕與控制鍵 */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .knob-label {
+            font-size: 0.8rem;
+            color: #8a7663;
+            margin-bottom: 5px;
+        }
+
+        .btn-steam {
+            background: linear-gradient(to bottom, #7a5330, #4a301a);
+            border: 2px solid #3d2612;
+            color: #f7e6d4;
+            padding: 12px 24px;
+            font-family: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            box-shadow: 0 4px #24160b, 0 5px 10px rgba(0,0,0,0.5);
+            transition: all 0.1s ease;
+        }
+
+        .btn-steam:active {
+            box-shadow: 0 1px #24160b;
+            transform: translateY(3px);
+        }
+
+        .btn-steam.playing {
+            background: linear-gradient(to bottom, #4a301a, #24170d);
+            color: var(--glow-green);
+            border-color: var(--bronze);
+        }
+
+        .status-text {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #8a7663;
+            min-height: 40px;
+            line-height: 1.4;
+        }
+
+        @keyframes jitter {
+            0% { transform: translateY(-5px) scaleY(1); }
+            50% { transform: translateY(8px) scaleY(2); }
+            100% { transform: translateY(-3px) scaleY(0.5); }
         }
     </style>
 </head>
 <body>
 
-    <div id="scan-overlay">請將相機對準【橙色陶瓷耳環】</div>
+    <div class="ambient-glow"></div>
 
-    <a-scene 
-        mindar-image="imageTargetSrc: ./earring.mind; autoStart: true; uiLoading: yes; uiScanning: yes;" 
-        color-space="sRGB" 
-        renderer="colorManagement: true, physicallyCorrectLights" 
-        vr-mode-ui="enabled: false" 
-        device-orientation-permission-ui="enabled: false">
+    <div class="radio-container">
+        <h1>RETRO STEAM RECEIVER</h1>
         
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        <!-- 頻率顯示器 -->
+        <div class="frequency-display" id="display">
+            <div class="signal-line"></div>
+            <div class="freq-text" id="freqCode">87.5 MHz</div>
+        </div>
 
-        <a-entity mindar-image-target="targetIndex: 0" id="earring-target">
-            
-            <a-plane 
-                id="ar-canvas-plane" 
-                position="0 0 0" 
-                rotation="0 0 0" 
-                width="1.5" 
-                height="1.5" 
-                material="shader: flat; src: #animationCanvas; transparent: true; opacity: 1;">
-            </a-plane>
+        <!-- 控制模組 -->
+        <div class="controls">
+            <div>
+                <div class="knob-label">黃銅閥門開關</div>
+                <button class="btn-steam" id="powerBtn">啟動微波核心</button>
+            </div>
+        </div>
 
-        </a-entity>
-    </a-scene>
+        <!-- 狀態敘述 -->
+        <div class="status-text" id="statusLog">機件冰冷。等待齒輪咬合與壓力閥導通...</div>
+    </div>
 
-    <canvas id="animationCanvas" style="display: none;"></canvas>
+    <!-- 公共音效資源引用自 Pixabay 公共庫 -->
+    <!-- 蒸汽/齒輪/工業背景音 -->
+    <audio id="gearAudio" loop src="https://pixabay.com"></audio>
+    <!-- 電流白噪音/收音機雜音 -->
+    <audio id="staticAudio" loop src="https://pixabay.com"></audio>
 
     <script>
-        // --- 核心控制中心（完全保留並適配你的 Canvas 代碼） ---
-        const canvas = document.getElementById('animationCanvas');
-        const ctx = canvas.getContext('2d');
+        const powerBtn = document.getElementById('powerBtn');
+        const gearAudio = document.getElementById('gearAudio');
+        const staticAudio = document.getElementById('staticAudio');
+        const display = document.getElementById('display');
+        const freqCode = document.getElementById('freqCode');
+        const statusLog = document.getElementById('statusLog');
 
-        // 固定 Canvas 分辨率（提供給 AR 貼圖高清晰度）
-        const size = 600;
-        canvas.width = size;
-        canvas.height = size;
+        let isRunning = false;
 
-        const centerX = size / 2;
-        const centerY = size / 2 + 50;
-        const orangeRadius = 50;
+        // 設定初始音量
+        gearAudio.volume = 0.6;
+        staticAudio.volume = 0.4;
 
-        let globalTime = 0;
-        const STAGE_GLOW = 0;      
-        const STAGE_PEEL = 1;      
-        const STAGE_BLOOM = 2;     
-        const STAGE_TEXT = 3;      
-        let currentStage = STAGE_GLOW;
-
-        let particles = [];
-        let flowers = [];
-        let textAlpha = 0;
-        let textYOffset = 0;
-        let isTracking = false; // 用於判斷現實中是否正對準耳環
-
-        function initBlooms() {
-            flowers = [];
-            particles = [];
-            for (let i = 0; i < 6; i++) {
-                flowers.push({
-                    angle: (Math.PI * 2 / 6) * i,
-                    maxSize: 15 + Math.random() * 10,
-                    currentSize: 0,
-                    speed: 0.4 + Math.random() * 0.3,
-                    color: i % 2 === 0 ? '#fff5f5' : '#ffd3d3'
-                });
-            }
-            for (let i = 0; i < 60; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 1.5 + Math.random() * 3;
-                particles.push({
-                    x: centerX,
-                    y: centerY,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed - 1, 
-                    radius: 1.5 + Math.random() * 2,
-                    color: `hsl(${Math.random() * 40 + 20}, 100%, 70%)`, 
-                    alpha: 1,
-                    decay: 0.015 + Math.random() * 0.02
-                });
-            }
-        }
-
-        function drawEarringHook() {
-            ctx.save();
-            ctx.strokeStyle = '#d4af37'; 
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.shadowBlur = 4;
-            ctx.shadowColor = 'rgba(212, 175, 55, 0.3)';
-
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY - orangeRadius - 50);
-            ctx.quadraticCurveTo(centerX + 15, centerY - orangeRadius - 70, centerX + 5, centerY - orangeRadius - 100);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(centerX, centerY - orangeRadius - 10, 6, 0, Math.PI * 2);
-            ctx.fillStyle = '#d4af37';
-            ctx.fill();
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        // 核心渲染循環
-        function renderARLoop() {
-            // 清除畫布，注意在 AR 中我們需要透明背景，所以清除為全透明
-            ctx.clearRect(0, 0, size, size);
-
-            // 只有當 AR 識別到耳環時，動畫才開始走時間軸
-            if (isTracking) {
-                globalTime++;
-            }
-
-            // 判定動畫進行階段
-            if (globalTime <= 120) currentStage = STAGE_GLOW;
-            else if (globalTime > 120 && globalTime <= 240) currentStage = STAGE_PEEL;
-            else if (globalTime > 240 && globalTime <= 340) {
-                if (currentStage === STAGE_PEEL) initBlooms(); 
-                currentStage = STAGE_BLOOM;
-            } 
-            else if (globalTime > 340) currentStage = STAGE_TEXT;
-
-            drawEarringHook();
-
-            let glowBlur = 10 + Math.sin(globalTime * 0.05) * 6;
-            let peelProgress = 0;
-            if (currentStage >= STAGE_PEEL) {
-                peelProgress = Math.min(1, (globalTime - 120) / 100);
-            }
-
-            const petalCount = 6;
-            for (let i = 0; i < petalCount; i++) {
-                ctx.save();
-                ctx.translate(centerX, centerY);
+        powerBtn.addEventListener('click', () => {
+            if (!isRunning) {
+                // 啟動音效
+                gearAudio.play().catch(e => console.log("等待用戶交互交互以撥放音訊"));
                 
-                const baseAngle = (Math.PI * 2 / petalCount) * i;
-                ctx.rotate(baseAngle);
-
-                let peelYOffset = peelProgress * orangeRadius * 0.9;
-                let peelRot = peelProgress * Math.PI * 0.45;
-
-                ctx.translate(0, peelYOffset);
-                ctx.rotate(peelRot);
-
-                ctx.shadowBlur = glowBlur;
-                ctx.shadowColor = '#f97316';
-
-                ctx.beginPath();
-                ctx.moveTo(0, -orangeRadius);
-                ctx.bezierCurveTo(-orangeRadius * 0.5, -orangeRadius, -orangeRadius * 0.6, 0, 0, 0);
-                ctx.bezierCurveTo(orangeRadius * 0.6, 0, orangeRadius * 0.5, -orangeRadius, 0, -orangeRadius);
+                // 模擬蒸汽運轉後切換成收音機雜音的動態
+                isRunning = true;
+                powerBtn.classList.add('playing');
+                powerBtn.innerText = '關閉核心';
                 
-                ctx.fillStyle = '#f97316'; 
-                ctx.fill();
+                statusLog.innerText = '耳機中響起低沉的蒸汽齒輪咬合聲...';
+                display.classList.add('noise-active');
 
-                ctx.beginPath();
-                ctx.moveTo(0, -orangeRadius + 5);
-                ctx.bezierCurveTo(-orangeRadius * 0.3, -orangeRadius + 5, -orangeRadius * 0.4, -5, 0, -5);
-                ctx.fillStyle = 'rgba(255, 245, 230, 0.4)';
-                ctx.fill();
-
-                ctx.restore();
-            }
-
-            if (currentStage >= STAGE_BLOOM) {
-                flowers.forEach(f => {
-                    if (f.currentSize < f.maxSize) f.currentSize += f.speed;
-
-                    ctx.save();
-                    ctx.translate(centerX, centerY);
-                    ctx.rotate(f.angle);
-                    ctx.fillStyle = f.color;
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = '#fff';
-
-                    for (let j = 0; j < 5; j++) {
-                        ctx.rotate((Math.PI * 2) / 5);
-                        ctx.beginPath();
-                        ctx.ellipse(f.currentSize, 0, f.currentSize, f.currentSize / 2, 0, 0, Math.PI * 2);
-                        ctx.fill();
+                // 2.5秒後轉為電流雜音
+                setTimeout(() => {
+                    if(isRunning) {
+                        staticAudio.play();
+                        statusLog.innerText = '隨後轉為老舊收音機的電流雜音（White Noise）。核心頻率開始飄移...';
+                        animateFrequency();
                     }
-                    ctx.restore();
-                });
+                }, 2500);
 
-                particles.forEach((p) => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.vy += 0.02; 
-                    p.alpha -= p.decay;
-
-                    if (p.alpha > 0) {
-                        ctx.save();
-                        ctx.globalAlpha = p.alpha;
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                        ctx.fillStyle = p.color;
-                        ctx.shadowBlur = 5;
-                        ctx.shadowColor = p.color;
-                        ctx.fill();
-                        ctx.restore();
-                    }
-                });
+            } else {
+                // 關閉系統
+                gearAudio.pause();
+                staticAudio.pause();
+                isRunning = false;
+                powerBtn.classList.remove('playing');
+                powerBtn.innerText = '啟動微波核心';
+                display.classList.remove('noise-active');
+                statusLog.innerText = '閥門關閉，機械歸於寂靜。';
+                freqCode.innerText = '00.0 MHz';
             }
-
-            if (currentStage >= STAGE_TEXT) {
-                if (textAlpha < 1) textAlpha += 0.015;     
-                if (textYOffset > -40) textYOffset -= 0.5; 
-
-                ctx.save();
-                ctx.globalAlpha = textAlpha;
-                ctx.textAlign = 'center';
-                ctx.font = 'bold 32px Georgia, serif'; // AR 放大字體適配
-                ctx.fillStyle = '#dfb76c';
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = 'rgba(223, 183, 108, 0.8)';
-                
-                ctx.fillText('Tom, I Miss U', centerX, centerY - orangeRadius - 130 + textYOffset);
-                ctx.restore();
-            }
-
-            // 【非常重要】通知 A-Frame 刷新 Canvas 貼圖紋理，否則 AR 畫面會卡住不動
-            const plane = document.getElementById('ar-canvas-plane');
-            if (plane && plane.getObject3D('mesh')) {
-                const material = plane.getObject3D('mesh').material;
-                if (material && material.map) {
-                    material.map.needsUpdate = true;
-                }
-            }
-
-            requestAnimationFrame(renderARLoop);
-        }
-
-        // --- MindAR 監聽事件：控制動畫何時播放/重置 ---
-        const targetEntity = document.getElementById('earring-target');
-        const overlayText = document.getElementById('scan-overlay');
-
-        // 1. 當現實中【識別到】耳環時
-        targetEntity.addEventListener("targetFound", event => {
-            console.log("耳環識別成功！展開動畫開始");
-            isTracking = true;
-            overlayText.style.display = "none"; // 隱藏提示
         });
 
-        // 2. 當耳環【離開視線】時
-        targetEntity.addEventListener("targetLost", event => {
-            console.log("耳環離開視線，重置動畫");
-            isTracking = false;
-            // 重置所有動畫狀態機，以便下次對準時重新播放
-            globalTime = 0;
-            textAlpha = 0;
-            textYOffset = 0;
-            currentStage = STAGE_GLOW;
-            overlayText.style.display = "block"; // 重新顯示提示
-        });
-
-        // 啟動渲染
-        renderARLoop();
+        // 模擬調頻指針飄移效果
+        function animateFrequency() {
+            if (!isRunning) return;
+            const randomFreq = (Math.random() * (108.0 - 87.5) + 87.5).toFixed(1);
+            freqCode.innerText = randomFreq + ' MHz';
+            setTimeout(animateFrequency, Math.random() * 800 + 400);
+        }
     </script>
 </body>
 </html>
