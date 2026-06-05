@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>蒸汽齒輪與調頻收音機</title>
+    <title>純代碼生成 - 蒸汽齒輪與調頻收音機</title>
     <style>
         :root {
             --bronze: #8c6239;
@@ -53,7 +53,6 @@
             margin-bottom: 25px;
         }
 
-        /* 綠光頻率螢幕 */
         .frequency-display {
             background-color: #081205;
             border: 3px inset var(--dark-copper);
@@ -89,7 +88,6 @@
             letter-spacing: 3px;
         }
 
-        /* 蒸汽旋鈕與控制鍵 */
         .controls {
             display: flex;
             flex-direction: column;
@@ -137,7 +135,7 @@
 
         @keyframes jitter {
             0% { transform: translateY(-5px) scaleY(1); }
-            50% { transform: translateY(8px) scaleY(2); }
+            50% { transform: translateY(8px) scaleY(2.5); }
             100% { transform: translateY(-3px) scaleY(0.5); }
         }
     </style>
@@ -149,13 +147,11 @@
     <div class="radio-container">
         <h1>RETRO STEAM RECEIVER</h1>
         
-        <!-- 頻率顯示器 -->
         <div class="frequency-display" id="display">
             <div class="signal-line"></div>
-            <div class="freq-text" id="freqCode">87.5 MHz</div>
+            <div class="freq-text" id="freqCode">00.0 MHz</div>
         </div>
 
-        <!-- 控制模組 -->
         <div class="controls">
             <div>
                 <div class="knob-label">黃銅閥門開關</div>
@@ -163,62 +159,123 @@
             </div>
         </div>
 
-        <!-- 狀態敘述 -->
         <div class="status-text" id="statusLog">機件冰冷。等待齒輪咬合與壓力閥導通...</div>
     </div>
 
-    <!-- 公共音效資源引用自 Pixabay 公共庫 -->
-    <!-- 蒸汽/齒輪/工業背景音 -->
-    <audio id="gearAudio" loop src="https://pixabay.com"></audio>
-    <!-- 電流白噪音/收音機雜音 -->
-    <audio id="staticAudio" loop src="https://pixabay.com"></audio>
-
     <script>
         const powerBtn = document.getElementById('powerBtn');
-        const gearAudio = document.getElementById('gearAudio');
-        const staticAudio = document.getElementById('staticAudio');
         const display = document.getElementById('display');
         const freqCode = document.getElementById('freqCode');
         const statusLog = document.getElementById('statusLog');
 
         let isRunning = false;
+        
+        // Web Audio API 節點變數
+        let audioCtx = null;
+        let gearOsc = null;
+        let gearGain = null;
+        let noiseNode = null;
+        let noiseGain = null;
+        let frequencyInterval = null;
 
-        // 設定初始音量
-        gearAudio.volume = 0.6;
-        staticAudio.volume = 0.4;
+        // 初始化音訊上下文
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // 用數學算式即時生成白噪音（電流聲）
+        function createWhiteNoise() {
+            const bufferSize = 2 * audioCtx.sampleRate;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = noiseBuffer;
+            noise.loop = true;
+            return noise;
+        }
+
+        // 用低頻振盪器合成低沉的工業齒輪與機械轟鳴聲
+        function playGearSound() {
+            gearOsc = audioCtx.createOscillator();
+            gearGain = audioCtx.createGain();
+            
+            gearOsc.type = 'sawtooth'; // 鋸齒波，帶有強烈機械摩擦質感
+            gearOsc.frequency.setValueAtTime(45, audioCtx.currentTime); // 45Hz 超低空調與齒輪轟鳴
+            
+            // 模擬齒輪每秒 2 次的咬合撞擊起伏（低頻調變）
+            const lfo = audioCtx.createOscillator();
+            const lfoGain = audioCtx.createGain();
+            lfo.frequency.setValueAtTime(2, audioCtx.currentTime); 
+            lfoGain.gain.setValueAtTime(15, audioCtx.currentTime);
+            
+            lfo.connect(lfoGain);
+            lfoGain.connect(gearOsc.frequency);
+            
+            gearGain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            
+            gearOsc.connect(gearGain);
+            gearGain.connect(audioCtx.destination);
+            
+            gearOsc.start();
+            lfo.start();
+        }
 
         powerBtn.addEventListener('click', () => {
             if (!isRunning) {
-                // 啟動音效
-                gearAudio.play().catch(e => console.log("等待用戶交互交互以撥放音訊"));
-                
-                // 模擬蒸汽運轉後切換成收音機雜音的動態
+                if (!audioCtx) initAudio();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
                 isRunning = true;
                 powerBtn.classList.add('playing');
                 powerBtn.innerText = '關閉核心';
-                
-                statusLog.innerText = '耳機中響起低沉的蒸汽齒輪咬合聲...';
                 display.classList.add('noise-active');
+                freqCode.innerText = '87.5 MHz';
+                statusLog.innerText = '耳機中響起低沉的蒸汽齒輪咬合聲...';
 
-                // 2.5秒後轉為電流雜音
+                // 1. 立即播放蒸汽齒輪聲
+                playGearSound();
+
+                // 2. 2.5秒後轉為電流雜音（白噪音）
                 setTimeout(() => {
-                    if(isRunning) {
-                        staticAudio.play();
+                    if (isRunning) {
+                        noiseNode = createWhiteNoise();
+                        noiseGain = audioCtx.createGain();
+                        
+                        // 帶通濾波器，讓白噪音聽起來更像老舊收音機的收訊不良感
+                        const filter = audioCtx.createBiquadFilter();
+                        filter.type = 'bandpass';
+                        filter.frequency.value = 1000; 
+
+                        noiseGain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                        
+                        noiseNode.connect(filter);
+                        filter.connect(noiseGain);
+                        noiseGain.connect(audioCtx.destination);
+                        
+                        noiseNode.start();
+                        
                         statusLog.innerText = '隨後轉為老舊收音機的電流雜音（White Noise）。核心頻率開始飄移...';
                         animateFrequency();
                     }
                 }, 2500);
 
             } else {
-                // 關閉系統
-                gearAudio.pause();
-                staticAudio.pause();
+                // 停止所有生成的音訊
                 isRunning = false;
                 powerBtn.classList.remove('playing');
                 powerBtn.innerText = '啟動微波核心';
                 display.classList.remove('noise-active');
                 statusLog.innerText = '閥門關閉，機械歸於寂靜。';
                 freqCode.innerText = '00.0 MHz';
+
+                if (gearOsc) { gearOsc.stop(); gearOsc.disconnect(); }
+                if (noiseNode) { noiseNode.stop(); noiseNode.disconnect(); }
+                clearTimeout(frequencyInterval);
             }
         });
 
@@ -227,7 +284,7 @@
             if (!isRunning) return;
             const randomFreq = (Math.random() * (108.0 - 87.5) + 87.5).toFixed(1);
             freqCode.innerText = randomFreq + ' MHz';
-            setTimeout(animateFrequency, Math.random() * 800 + 400);
+            frequencyInterval = setTimeout(animateFrequency, Math.random() * 800 + 400);
         }
     </script>
 </body>
