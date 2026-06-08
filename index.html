@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR 識別後完美鎖定</title>
+    <title>MindAR 完美鎖定（鏡像雙胞胎法）</title>
     
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -40,8 +40,7 @@
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
-            
-            <a-entity id="model-wrapper">
+            <a-entity id="tracking-model">
                 <a-gltf-model 
                     src="#avatarModel" 
                     scale="0.01 0.01 0.01"
@@ -49,14 +48,23 @@
                     rotation="90 0 0">
                 </a-gltf-model>
             </a-entity>
-            
         </a-entity>
+
+        <a-entity id="world-model" visible="false">
+            <a-gltf-model 
+                src="#avatarModel" 
+                scale="0.01 0.01 0.01"
+                position="0 0 0" 
+                rotation="0 0 0">
+            </a-gltf-model>
+        </a-entity>
+
     </a-scene>
 
     <script>
         const targetEl = document.querySelector('#ar-target');
-        const wrapperEl = document.querySelector('#model-wrapper');
-        const sceneEl = document.querySelector('#main-scene');
+        const trackingModel = document.querySelector('#tracking-model');
+        const worldModel = document.querySelector('#world-model');
         const statusUi = document.querySelector('#status-ui');
         
         let isLocked = false;
@@ -64,34 +72,32 @@
         targetEl.addEventListener("targetFound", () => {
             if (isLocked) return;
             
-            // 1. 先抓取模型在識別成功當下的「世界坐標」與「世界旋轉角度」
-            const worldPosition = new THREE.Vector3();
-            const worldQuaternion = new THREE.Quaternion();
-            const worldScale = new THREE.Vector3();
-            
-            wrapperEl.object3D.updateMatrixWorld();
-            wrapperEl.object3D.matrixWorld.decompose(worldPosition, worldQuaternion, worldScale);
-            
-            // 2. 💡 核心修正：直接在 DOM (HTML) 層級進行節點轉移
-            // 把整個 <a-entity id="model-wrapper"> 從 ar-target 內部拔出，貼到 a-scene 的根目錄下
-            sceneEl.appendChild(wrapperEl);
-            
-            // 3. 轉移後，模型在 A-Frame 內部的本地坐標會被清空，此時立刻將剛才紀錄的世界坐標塞回給它
-            // 這樣在視覺上它就會完美停留在原本的位置，絕不消失！
-            wrapperEl.object3D.position.copy(worldPosition);
-            wrapperEl.object3D.quaternion.copy(worldQuaternion);
-            
-            isLocked = true;
-            statusUi.innerHTML = "🎉 識別成功！模型已永久鎖定空間。";
-            statusUi.style.background = "rgba(40, 167, 69, 0.8)";
-            console.log("【系統提示】HTML 節點轉移成功，模型已脫離追蹤並鎖定！");
-        });
+            // 延遲一小段時間確保 MindAR 的空間矩陣完全穩定
+            setTimeout(() => {
+                if (isLocked) return;
 
-        // 雙重防護：當 MindAR 宣告遺失時，確保被搬移出來的模型依然可見
-        targetEl.addEventListener("targetLost", () => {
-            if (isLocked) {
-                wrapperEl.setAttribute('visible', true);
-            }
+                // 1. 抓取追蹤模型在世界空間中的準確坐標與旋轉
+                const worldPosition = new THREE.Vector3();
+                const worldQuaternion = new THREE.Quaternion();
+                const worldScale = new THREE.Vector3();
+                
+                trackingModel.object3D.updateMatrixWorld();
+                trackingModel.object3D.matrixWorld.decompose(worldPosition, worldQuaternion, worldScale);
+                
+                // 2. 把這些世界坐標直接賦值給一直躲在世界場景中的「雙胞胎模型」
+                worldModel.object3D.position.copy(worldPosition);
+                worldModel.object3D.quaternion.copy(worldQuaternion);
+                
+                // 3. 亮起雙胞胎模型，同時隱藏原本在 MindAR 裡面的追蹤模型
+                worldModel.setAttribute('visible', true);
+                trackingModel.setAttribute('visible', false);
+                
+                // 4. 永久鎖定
+                isLocked = true;
+                statusUi.innerHTML = "🎉 識別成功！模型已永久鎖定空間。";
+                statusUi.style.background = "rgba(40, 167, 69, 0.8)";
+                console.log("【系統提示】雙胞胎模型已在世界坐標中定格解鎖！");
+            }, 600); 
         });
     </script>
 </body>
