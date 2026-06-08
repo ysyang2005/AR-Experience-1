@@ -12,13 +12,17 @@
     <a-scene 
         mindar-image="imageTargetSrc: ./2.mind;" 
         color-space="sRGB" 
-        renderer="colorManagement: true" 
+        renderer="colorManagement: true; physicallyCorrectLights: true"
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
         
         <a-assets>
             <a-asset-item id="avatarModel" src="./2.glb"></a-asset-item>
         </a-assets>
+
+        <!-- 加燈光 -->
+        <a-light type="ambient" intensity="2" color="#ffffff"></a-light>
+        <a-light type="directional" intensity="3" position="1 2 1" color="#ffffff"></a-light>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
