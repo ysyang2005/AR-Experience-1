@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR 2.0 完整專案</title>
+    <title>MindAR 圖像追蹤專案</title>
     
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
@@ -72,31 +72,31 @@
     </a-scene>
 
     <script>
-        // 自動除錯檢測
         const debugMsg = document.getElementById('debug-msg');
-        
+        const sceneEl = document.querySelector('a-scene');
+
         // 監聽 A-Frame 資產載入錯誤（例如 2.glb 找不到或損壞）
         document.querySelector('a-assets').addEventListener('asset-load-error', (e) => {
             console.error("資產載入失敗:", e.detail.src);
             debugMsg.innerHTML = `⚠️ 錯誤：無法載入 3D 模型檔案 (${e.detail.src})。請檢查檔名大小寫或檔案是否損壞。`;
         });
 
-        // 監聽 MindAR 啟動狀態
-        const sceneEl = document.querySelector('a-scene');
+        // 監聽 MindAR 成功啟動狀態
         sceneEl.addEventListener("arReady", (event) => {
-            console.log("MindAR 載入成功，準備掃描！");
+            console.log("MindAR 順利啟動，載入畫面已自動關閉！");
         });
 
+        // 監聽 MindAR 啟動失敗
         sceneEl.addEventListener("arError", (event) => {
             console.error("MindAR 啟動錯誤:", event);
             debugMsg.innerHTML = `⚠️ 錯誤：AR 啟動失敗。請確保使用 HTTPS 連線並允許相機權限。`;
         });
 
-        // 設定 10 秒逾時檢查
+        // 10 秒逾時安全提示機制
         setTimeout(() => {
             const overlay = document.getElementById('scanning-overlay');
-            if (overlay && !overlay.classList.contains('hidden') && debugMsg.innerHTML === "") {
-                debugMsg.innerHTML = "💡 提示：如果卡住太久，請檢查瀏覽器 F12 Console 主控台是否有紅色錯誤，通常是 2.mind 檔案找不到或伺服器不支援該格式。";
+            if (overlay && window.getComputedStyle(overlay).display !== 'none' && debugMsg.innerHTML === "") {
+                debugMsg.innerHTML = "💡 提示：若持續卡住，可能是 2.glb 檔案過大或 2.mind 版本不相容。請確認瀏覽器主控台有無新錯誤。";
             }
         }, 10000);
     </script>
