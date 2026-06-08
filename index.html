@@ -29,6 +29,7 @@
             font-size: 20px;
             font-family: sans-serif;
             z-index: 9999;
+            transition: opacity 0.5s ease; /* 增加平滑淡出效果 */
         }
         .error-hint {
             color: #ff4d4d;
@@ -49,7 +50,7 @@
     <a-scene 
         mindar-image="imageTargetSrc: ./2.mind; uiScanning: #scanning-overlay;" 
         color-space="sRGB" 
-        renderer="colorManagement: true, physicallyCorrectLights: true" 
+        renderer="colorManagement: true" 
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
         
@@ -72,33 +73,36 @@
     </a-scene>
 
     <script>
+        const overlay = document.getElementById('scanning-overlay');
         const debugMsg = document.getElementById('debug-msg');
         const sceneEl = document.querySelector('a-scene');
 
-        // 監聽 A-Frame 資產載入錯誤（例如 2.glb 找不到或損壞）
+        // 封裝一個關閉遮罩的函式
+        function hideOverlay() {
+            if (overlay) {
+                console.log("【系統提示】滿足啟動條件，強制關閉載入遮罩！");
+                overlay.style.display = 'none';
+            }
+        }
+
+        // 1. 標準監聽：MindAR 啟動成功時關閉
+        sceneEl.addEventListener("arReady", () => {
+            console.log("【MindAR】arReady 事件觸發");
+            hideOverlay();
+        });
+
+        // 2. 防漏勾監聽：只要頁面上的 A-Frame 畫布（Canvas）開始渲染了，代表相機肯定開了，直接關閉遮罩
+        sceneEl.addEventListener("render-target-loaded", () => {
+            console.log("【A-Frame】畫布渲染目標已載入");
+            // 延遲 1 秒給 MindAR 緩衝，然後強制關閉遮罩
+            setTimeout(hideOverlay, 1000);
+        });
+
+        // 3. 資產載入錯誤監聽
         document.querySelector('a-assets').addEventListener('asset-load-error', (e) => {
             console.error("資產載入失敗:", e.detail.src);
-            debugMsg.innerHTML = `⚠️ 錯誤：無法載入 3D 模型檔案 (${e.detail.src})。請檢查檔名大小寫或檔案是否損壞。`;
+            debugMsg.innerHTML = `⚠️ 錯誤：無法載入 3D 模型 (${e.detail.src})。請檢查路徑與大小寫。`;
         });
-
-        // 監聽 MindAR 成功啟動狀態
-        sceneEl.addEventListener("arReady", (event) => {
-            console.log("MindAR 順利啟動，載入畫面已自動關閉！");
-        });
-
-        // 監聽 MindAR 啟動失敗
-        sceneEl.addEventListener("arError", (event) => {
-            console.error("MindAR 啟動錯誤:", event);
-            debugMsg.innerHTML = `⚠️ 錯誤：AR 啟動失敗。請確保使用 HTTPS 連線並允許相機權限。`;
-        });
-
-        // 10 秒逾時安全提示機制
-        setTimeout(() => {
-            const overlay = document.getElementById('scanning-overlay');
-            if (overlay && window.getComputedStyle(overlay).display !== 'none' && debugMsg.innerHTML === "") {
-                debugMsg.innerHTML = "💡 提示：若持續卡住，可能是 2.glb 檔案過大或 2.mind 版本不相容。請確認瀏覽器主控台有無新錯誤。";
-            }
-        }, 10000);
     </script>
 </body>
 </html>
