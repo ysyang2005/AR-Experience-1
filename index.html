@@ -3,52 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR 圖像追蹤專案</title>
+    <title>MindAR 極簡穩定版</title>
     
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        /* 載入與掃描提示畫面 */
-        #scanning-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            font-family: sans-serif;
-            z-index: 9999;
-            transition: opacity 0.5s ease; /* 增加平滑淡出效果 */
-        }
-        .error-hint {
-            color: #ff4d4d;
-            font-size: 14px;
-            margin-top: 15px;
-            max-width: 80%;
-            text-align: center;
-        }
+        body { margin: 0; overflow: hidden; }
     </style>
 </head>
 <body>
 
-    <div id="scanning-overlay">
-        <div>正在初始化相機與 AR 資源...</div>
-        <div id="debug-msg" class="error-hint"></div>
-    </div>
-
     <a-scene 
-        mindar-image="imageTargetSrc: ./2.mind; uiScanning: #scanning-overlay;" 
+        mindar-image="imageTargetSrc: ./2.mind;" 
         color-space="sRGB" 
         renderer="colorManagement: true" 
         vr-mode-ui="enabled: false" 
@@ -65,44 +32,11 @@
                 src="#avatarModel" 
                 scale="1 1 1" 
                 position="0 0 0" 
-                rotation="0 0 0"
-                animation="property: rotation; to: 0 360 0; dur: 10000; easing: linear; loop: true">
+                rotation="0 0 0">
             </a-gltf-model>
         </a-entity>
 
     </a-scene>
 
-    <script>
-        const overlay = document.getElementById('scanning-overlay');
-        const debugMsg = document.getElementById('debug-msg');
-        const sceneEl = document.querySelector('a-scene');
-
-        // 封裝一個關閉遮罩的函式
-        function hideOverlay() {
-            if (overlay) {
-                console.log("【系統提示】滿足啟動條件，強制關閉載入遮罩！");
-                overlay.style.display = 'none';
-            }
-        }
-
-        // 1. 標準監聽：MindAR 啟動成功時關閉
-        sceneEl.addEventListener("arReady", () => {
-            console.log("【MindAR】arReady 事件觸發");
-            hideOverlay();
-        });
-
-        // 2. 防漏勾監聽：只要頁面上的 A-Frame 畫布（Canvas）開始渲染了，代表相機肯定開了，直接關閉遮罩
-        sceneEl.addEventListener("render-target-loaded", () => {
-            console.log("【A-Frame】畫布渲染目標已載入");
-            // 延遲 1 秒給 MindAR 緩衝，然後強制關閉遮罩
-            setTimeout(hideOverlay, 1000);
-        });
-
-        // 3. 資產載入錯誤監聽
-        document.querySelector('a-assets').addEventListener('asset-load-error', (e) => {
-            console.error("資產載入失敗:", e.detail.src);
-            debugMsg.innerHTML = `⚠️ 錯誤：無法載入 3D 模型 (${e.detail.src})。請檢查路徑與大小寫。`;
-        });
-    </script>
 </body>
 </html>
