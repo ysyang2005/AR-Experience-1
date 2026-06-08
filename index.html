@@ -3,25 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR 2.0 範例</title>
+    <title>MindAR 2.0 完整專案</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
-        body { margin: 0; overflow: hidden; }
-        /* 載入提示畫面 */
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        /* 載入與掃描提示畫面 */
         #scanning-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px; font-family: sans-serif; z-index: 9999;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-family: sans-serif;
+            z-index: 9999;
+        }
+        .error-hint {
+            color: #ff4d4d;
+            font-size: 14px;
+            margin-top: 15px;
+            max-width: 80%;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div id="scanning-overlay">正在載入 AR 資源 (2.mind / 2.glb)...</div>
+    <div id="scanning-overlay">
+        <div>正在初始化相機與 AR 資源...</div>
+        <div id="debug-msg" class="error-hint"></div>
+    </div>
 
     <a-scene 
         mindar-image="imageTargetSrc: ./2.mind; uiScanning: #scanning-overlay;" 
@@ -31,15 +54,15 @@
         device-orientation-permission-ui="enabled: false">
         
         <a-assets>
-            <a-asset-item id="myModel2" src="./2.glb"></a-asset-item>
+            <a-asset-item id="avatarModel" src="./2.glb"></a-asset-item>
         </a-assets>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
             <a-gltf-model 
-                src="#myModel2" 
-                scale="0.5 0.5 0.5" 
+                src="#avatarModel" 
+                scale="1 1 1" 
                 position="0 0 0" 
                 rotation="0 0 0"
                 animation="property: rotation; to: 0 360 0; dur: 10000; easing: linear; loop: true">
@@ -48,5 +71,34 @@
 
     </a-scene>
 
+    <script>
+        // 自動除錯檢測
+        const debugMsg = document.getElementById('debug-msg');
+        
+        // 監聽 A-Frame 資產載入錯誤（例如 2.glb 找不到或損壞）
+        document.querySelector('a-assets').addEventListener('asset-load-error', (e) => {
+            console.error("資產載入失敗:", e.detail.src);
+            debugMsg.innerHTML = `⚠️ 錯誤：無法載入 3D 模型檔案 (${e.detail.src})。請檢查檔名大小寫或檔案是否損壞。`;
+        });
+
+        // 監聽 MindAR 啟動狀態
+        const sceneEl = document.querySelector('a-scene');
+        sceneEl.addEventListener("arReady", (event) => {
+            console.log("MindAR 載入成功，準備掃描！");
+        });
+
+        sceneEl.addEventListener("arError", (event) => {
+            console.error("MindAR 啟動錯誤:", event);
+            debugMsg.innerHTML = `⚠️ 錯誤：AR 啟動失敗。請確保使用 HTTPS 連線並允許相機權限。`;
+        });
+
+        // 設定 10 秒逾時檢查
+        setTimeout(() => {
+            const overlay = document.getElementById('scanning-overlay');
+            if (overlay && !overlay.classList.contains('hidden') && debugMsg.innerHTML === "") {
+                debugMsg.innerHTML = "💡 提示：如果卡住太久，請檢查瀏覽器 F12 Console 主控台是否有紅色錯誤，通常是 2.mind 檔案找不到或伺服器不支援該格式。";
+            }
+        }, 10000);
+    </script>
 </body>
 </html>
