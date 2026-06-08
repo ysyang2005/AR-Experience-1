@@ -3,17 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR 極簡穩定版</title>
-    
+    <title>MindAR</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    
-    <style>
-        body { margin: 0; overflow: hidden; }
-    </style>
+    <style>body { margin: 0; overflow: hidden; }</style>
 </head>
 <body>
-
     <a-scene 
         mindar-image="imageTargetSrc: ./2.mind;" 
         color-space="sRGB" 
@@ -30,13 +25,17 @@
         <a-entity mindar-image-target="targetIndex: 0">
             <a-gltf-model 
                 src="#avatarModel" 
-                scale="1 1 1" 
+                scale="0.05 0.05 0.05"
                 position="0 0 0" 
-                rotation="0 0 0">
+                rotation="90 0 0">
             </a-gltf-model>
         </a-entity>
-
     </a-scene>
 
+    <script>
+        document.querySelector('[mindar-image-target]').addEventListener('targetFound', () => {
+            console.log('✅ 圖卡辨識成功！');
+        });
+    </script>
 </body>
 </html>
