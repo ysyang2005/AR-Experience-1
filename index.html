@@ -3,56 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR 45度斜角優化穩定版</title>
+    <title>MindAR 識別後永久鎖定模型</title>
     
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
+        body { margin: 0; overflow: hidden; }
+        /* 頂部狀態提示 */
+        #status-ui {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.6); color: white; padding: 8px 16px;
+            border-radius: 20px; font-family: sans-serif; font-size: 14px;
+            z-index: 9999; pointer-events: none;
         }
     </style>
 </head>
 <body>
 
+    <div id="status-ui">🔍 請對準辨識圖進行首次識別...</div>
+
     <a-scene 
-        mindar-image="imageTargetSrc: ./2.mind;
-                      filterMinCF: 0.0001;
-                      filterBeta: 0.001;
-                      missTolerance: 30;
-                      warmupTolerance: 3;
-                      maxTrack: 1;"
+        mindar-image="imageTargetSrc: ./2.mind; filterMinCF: 0.0001; filterBeta: 0.001; maxTrack: 1;"
         color-space="sRGB" 
         renderer="colorManagement: true"
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
         
         <a-assets>
-            <a-asset-item id="avatarModel" src="./3.glb"></a-asset-item>
+            <a-asset-item id="avatarModel" src="./2.glb"></a-asset-item>
         </a-assets>
 
-        <a-light type="ambient" intensity="1.5" color="#ffffff"></a-light>
-        <a-light type="directional" intensity="1.5" position="1 4 2" color="#ffffff"></a-light>
+        <a-light type="ambient" intensity="1.5"></a-light>
+        <a-light type="directional" intensity="1.5" position="1 4 2"></a-light>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-entity mindar-image-target="targetIndex: 0">
+        <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
             
-            <a-entity rotation="0 0 0" position="0 0 0.3">
-                
+            <a-entity id="model-wrapper">
                 <a-gltf-model 
                     src="#avatarModel" 
                     scale="0.01 0.01 0.01"
                     position="0 0 0" 
-                    rotation="90 0 0">
+                    rotation="0 0 0">
                 </a-gltf-model>
-                
-              </a-entity>
+            </a-entity>
             
         </a-entity>
     </a-scene>
 
+    <script>
+        const targetEl = document.querySelector('#ar-target');
+        const wrapperEl = document.querySelector('#model-wrapper');
+        const sceneEl = document.querySelector('a-scene');
+        const statusUi = document.querySelector('#status-ui');
+        
+        let isLocked = false; // 標記是否已經鎖定
+
+        // 1. 當識別到目標圖片時
+        targetEl.addEventListener("targetFound", (event) => {
+            if (isLocked) return; // 如果已經鎖定，就不再重複觸發
+            
+            statusUi.innerHTML = "🎉 識別成功！模型已鎖定在當前空間。";
+            statusUi.style.background = "rgba(40, 167, 69, 0.8)"; // 變綠色提示
+            
+            // 💡 關鍵魔術：在識別到的這一瞬間，把模型從 AR 追蹤節點搬移到世界場景（a-scene）中
+            // 這樣它就不再跟隨圖片，而是固定在當前的世界坐標系裡
+            setTimeout(() => {
+                // 獲取模型當前的世界坐標與旋轉角度
+                const worldPosition = new THREE.Vector3();
+                const worldQuaternion = new THREE.Quaternion();
+                const worldScale = new THREE.Vector3();
+                
+                wrapperEl.object3D.updateMatrixWorld();
+                wrapperEl.object3D.matrixWorld.decompose(worldPosition, worldQuaternion, worldScale);
+                
+                // 將模型脫離原來的 AR 節點，直接掛載到場景（Scene）根目錄
+                sceneEl.object3D.add(wrapperEl.object3D);
+                
+                // 重新將剛才紀錄的世界坐標賦值給它，確保它待在原地不動
+                wrapperEl.object3D.position.copy(worldPosition);
+                wrapperEl.object3D.quaternion.copy(worldQuaternion);
+                
+                isLocked = true; 
+                console.log("模型已成功脫離圖像追蹤，獨立鎖定在空間中！");
+            }, 500); // 延遲 0.5 秒，讓 MindAR 的追蹤矩陣穩定後再拔出，效果更精準
+        });
+
+        // 2. 當目標圖片遺失時
+        targetEl.addEventListener("targetLost", (event) => {
+            if (isLocked) {
+                // 💡 強制干預：即使 MindAR 喊著遺失了、想隱藏模型，我們也強制讓它保持顯示
+                wrapperEl.setAttribute('visible', true);
+                console.log("圖片已拿走，但模型已被強行鎖定保留。");
+            }
+        });
+    </script>
 </body>
 </html>
