@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR 3D 模型載入範例</title>
+    <title>MindAR 2.0 範例</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
         body { margin: 0; overflow: hidden; }
-        /* 載入中提示畫面 */
+        /* 載入提示畫面 */
         #scanning-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); color: white;
@@ -21,24 +21,24 @@
 </head>
 <body>
 
-    <div id="scanning-overlay">正在載入 AR 資源與相機...</div>
+    <div id="scanning-overlay">正在載入 AR 資源 (2.mind / 2.glb)...</div>
 
     <a-scene 
-        mindar-image="imageTargetSrc: targets.mind; uiScanning: #scanning-overlay;" 
+        mindar-image="imageTargetSrc: ./2.mind; uiScanning: #scanning-overlay;" 
         color-space="sRGB" 
         renderer="colorManagement: true, physicallyCorrectLights: true" 
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
         
         <a-assets>
-            <a-asset-item id="myModel" src="model.glb"></a-asset-item>
+            <a-asset-item id="myModel2" src="./2.glb"></a-asset-item>
         </a-assets>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
             <a-gltf-model 
-                src="#myModel" 
+                src="#myModel2" 
                 scale="0.5 0.5 0.5" 
                 position="0 0 0" 
                 rotation="0 0 0"
