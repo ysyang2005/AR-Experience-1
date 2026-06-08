@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR 完美鎖定（鏡像雙胞胎法）</title>
+    <title>MindAR 完美空間鎖定（動態生成脫殼版）</title>
     
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -50,21 +50,12 @@
             </a-entity>
         </a-entity>
 
-        <a-entity id="world-model" visible="false">
-            <a-gltf-model 
-                src="#avatarModel" 
-                scale="0.01 0.01 0.01"
-                position="0 0 0" 
-                rotation="0 0 0">
-            </a-gltf-model>
-        </a-entity>
-
     </a-scene>
 
     <script>
         const targetEl = document.querySelector('#ar-target');
         const trackingModel = document.querySelector('#tracking-model');
-        const worldModel = document.querySelector('#world-model');
+        const sceneEl = document.querySelector('#main-scene');
         const statusUi = document.querySelector('#status-ui');
         
         let isLocked = false;
@@ -72,11 +63,11 @@
         targetEl.addEventListener("targetFound", () => {
             if (isLocked) return;
             
-            // 延遲一小段時間確保 MindAR 的空間矩陣完全穩定
+            // 延遲 0.5 秒等待追蹤矩陣完全穩定
             setTimeout(() => {
                 if (isLocked) return;
 
-                // 1. 抓取追蹤模型在世界空間中的準確坐標與旋轉
+                // 1. 精準抓取追蹤模型在世界空間中的坐標、旋轉、縮放
                 const worldPosition = new THREE.Vector3();
                 const worldQuaternion = new THREE.Quaternion();
                 const worldScale = new THREE.Vector3();
@@ -84,20 +75,38 @@
                 trackingModel.object3D.updateMatrixWorld();
                 trackingModel.object3D.matrixWorld.decompose(worldPosition, worldQuaternion, worldScale);
                 
-                // 2. 把這些世界坐標直接賦值給一直躲在世界場景中的「雙胞胎模型」
-                worldModel.object3D.position.copy(worldPosition);
-                worldModel.object3D.quaternion.copy(worldQuaternion);
+                // 2. 💡 核心魔術：用 JS 動態「憑空創造」一個全新的 A-Frame 標籤
+                // 這個標籤完全在 MindAR 的體系之外
+                const permanentEntity = document.createElement('a-entity');
                 
-                // 3. 亮起雙胞胎模型，同時隱藏原本在 MindAR 裡面的追蹤模型
-                worldModel.setAttribute('visible', true);
-                trackingModel.setAttribute('visible', false);
+                // 3. 把 3D 模型塞進這個獨立的新標籤裡
+                permanentEntity.innerHTML = `
+                    <a-gltf-model 
+                        src="#avatarModel" 
+                        scale="0.01 0.01 0.01"
+                        position="0 0 0" 
+                        rotation="90 0 0">
+                    </a-gltf-model>
+                `;
                 
-                // 4. 永久鎖定
+                // 4. 把這個不受控的全新實體，直接塞進場景最頂層
+                sceneEl.appendChild(permanentEntity);
+                
+                // 5. 等待 DOM 節點渲染完畢後，立刻把剛才扣下來的世界坐標與旋轉強灌給它
+                permanentEntity.addEventListener('loaded', () => {
+                    permanentEntity.object3D.position.copy(worldPosition);
+                    permanentEntity.object3D.quaternion.copy(worldQuaternion);
+                });
+                
+                // 6. 徹底把原本受 MindAR 控制的臨時模型刪除，絕不留隱患
+                trackingModel.parentNode.removeChild(trackingModel);
+                
+                // 7. 鎖定狀態
                 isLocked = true;
                 statusUi.innerHTML = "🎉 識別成功！模型已永久鎖定空間。";
                 statusUi.style.background = "rgba(40, 167, 69, 0.8)";
-                console.log("【系統提示】雙胞胎模型已在世界坐標中定格解鎖！");
-            }, 600); 
+                console.log("【金蟬脫殼】全新獨立模型已生成，MindAR 無法再將其隱藏！");
+            }, 500); 
         });
     </script>
 </body>
