@@ -6,31 +6,31 @@
     <title>MindAR Video Experience</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    
     <style>
         body { margin: 0; overflow: hidden; background-color: #000000; }
         #start-overlay {
-            position: fixed;
-            top: 0; left: 0;
+            position: fixed; top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            background: rgba(0,0,0,0.9); color: white;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
             z-index: 9999;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
         #start-btn {
-            padding: 14px 28px;
-            font-size: 18px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
+            padding: 14px 28px; font-size: 18px;
+            background: #007bff; color: white;
+            border: none; border-radius: 8px;
+            cursor: pointer; font-weight: bold;
+        }
+        /* 调试信息浮层 */
+        #debug-log {
+            position: fixed; bottom: 10px; left: 10px; right: 10px;
+            background: rgba(0,0,0,0.7); color: #0f0;
+            font-size: 12px; font-family: monospace;
+            padding: 8px; border-radius: 6px;
+            z-index: 8888; max-height: 120px;
+            overflow-y: auto; pointer-events: none;
         }
         .hidden { display: none !important; }
     </style>
@@ -43,6 +43,9 @@
         <button id="start-btn">開啟 AR 體驗</button>
     </div>
 
+    <!-- 调试浮层，确认识别状态，稳定后可删除 -->
+    <div id="debug-log"></div>
+
     <a-scene 
         id="ar-scene"
         mindar-image="imageTargetSrc: ./1.mind;
@@ -50,17 +53,17 @@
                       filterMinCF: 0.001;
                       filterBeta: 0.01;
                       missTolerance: 10;
-                      warmupTolerance: 10"
+                      warmupTolerance: 2"
         color-space="sRGB" 
         renderer="colorManagement: true; physicallyCorrectLights: true"
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
-        
+
         <a-assets timeout="10000">
-            <video id="mp4Video" 
-                   src="./1.mp4" 
+            <video id="mp4Video"
+                   src="./1.mp4"
                    loop="true"
-                   playsinline 
+                   playsinline
                    webkit-playsinline
                    crossorigin="anonymous">
             </video>
@@ -71,72 +74,78 @@
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0" video-controller>
-            <!--
-                修复2：rotation="0 0 90" 修正视频旋转90度问题
-                垂直视频 9:16，旋转后宽高对调：width=1.7778, height=1
-                如视频方向相反，改为 rotation="0 0 -90"
-            -->
-            <a-video 
-                src="#mp4Video" 
+            <a-video
+                src="#mp4Video"
                 width="1.7778"
                 height="1"
-                position="0 0 0" 
+                position="0 0 0"
                 rotation="0 0 90">
             </a-video>
         </a-entity>
     </a-scene>
 
     <script>
+        // 调试日志函数
+        const debugEl = document.querySelector('#debug-log');
+        function log(msg) {
+            console.log(msg);
+            const line = document.createElement('div');
+            line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
+            debugEl.appendChild(line);
+            debugEl.scrollTop = debugEl.scrollHeight;
+        }
+
         AFRAME.registerComponent('video-controller', {
             init: function () {
                 const el = this.el;
                 const video = document.querySelector('#mp4Video');
 
                 el.addEventListener('targetFound', function () {
-                    console.log("辨識成功，播放影片");
-                    // 取消静音（若之前降级为静音激活）
+                    log("✅ 識別成功，播放影片");
                     video.muted = false;
                     if (window._audioCtx && window._audioCtx.state === 'suspended') {
                         window._audioCtx.resume();
                     }
-                    video.play().catch(err => console.log("播放被拦截:", err));
+                    video.play().catch(err => log("播放被拦截: " + err));
                 });
 
                 el.addEventListener('targetLost', function () {
-                    console.log("目標丟失，暫停影片");
+                    log("⚠️ 目標丟失，暫停影片");
                     video.pause();
-                    // 修复1：丢失目标后重置时间，防止下次识别时有残留画面
                     video.currentTime = 0;
                 });
             }
         });
 
-        const sceneEl  = document.querySelector('#ar-scene');
-        const video     = document.querySelector('#mp4Video');
-        const startBtn  = document.querySelector('#start-btn');
+        const sceneEl      = document.querySelector('#ar-scene');
+        const video        = document.querySelector('#mp4Video');
+        const startBtn     = document.querySelector('#start-btn');
         const startOverlay = document.querySelector('#start-overlay');
 
         let sceneReady = false;
-        sceneEl.addEventListener('loaded', () => { sceneReady = true; });
+        sceneEl.addEventListener('loaded', () => {
+            sceneReady = true;
+            log("🎬 场景加载完成");
+        });
+
+        // MindAR 就绪 / 错误事件
+        sceneEl.addEventListener('arReady', () => log("📷 摄像头就绪，请对准识别图"));
+        sceneEl.addEventListener('arError', (e) => log("❌ AR错误: " + JSON.stringify(e.detail)));
 
         startBtn.addEventListener('click', function () {
-            // 解锁 AudioContext（必须在用户手势内）
+            log("👆 按钮点击，启动中...");
+
             try {
                 window._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 window._audioCtx.resume();
-            } catch(e) { console.log("AudioContext 失败:", e); }
-
-            // 修复1：仅做音频上下文预热，不 play 视频
-            // 用一段静默音频节点触发浏览器音频解锁，视频本身保持暂停
-            try {
                 const silentBuffer = window._audioCtx.createBuffer(1, 1, 22050);
                 const source = window._audioCtx.createBufferSource();
                 source.buffer = silentBuffer;
                 source.connect(window._audioCtx.destination);
                 source.start(0);
-            } catch(e) { console.log("静默音频触发失败:", e); }
+                log("🔊 AudioContext 已解锁");
+            } catch(e) { log("AudioContext 失败: " + e); }
 
-            // 修复1：确保视频停在起点，等待识别再播
             video.pause();
             video.currentTime = 0;
             video.muted = false;
@@ -146,8 +155,10 @@
             const tryStart = () => {
                 const mindARSystem = sceneEl.systems["mindar-image-system"];
                 if (mindARSystem) {
+                    log("🚀 MindAR 启动");
                     mindARSystem.start();
                 } else {
+                    log("⏳ 等待 MindAR system...");
                     setTimeout(tryStart, 300);
                 }
             };
@@ -155,7 +166,6 @@
             sceneReady ? tryStart() : sceneEl.addEventListener('loaded', tryStart, { once: true });
         });
 
-        // 微信解锁
         document.addEventListener("WeixinJSBridgeReady", function () {
             try {
                 window._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
