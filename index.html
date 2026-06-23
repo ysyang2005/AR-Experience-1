@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR</title>
+    <title>MindAR Video</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <style>body { margin: 0; overflow: hidden; }</style>
+    <style>
+        body { margin: 0; overflow: hidden; }
+    </style>
 </head>
 <body>
     <a-scene 
-        mindar-image="imageTargetSrc: ./2.mind;
+        mindar-image="imageTargetSrc: ./targets.mind;
                       filterMinCF: 0.001;
                       filterBeta: 0.01;
                       missTolerance: 10;
@@ -21,7 +23,7 @@
         device-orientation-permission-ui="enabled: false">
         
         <a-assets>
-            <a-asset-item id="avatarModel" src="./3.glb"></a-asset-item>
+            <video id="mp4Video" src="./1.mp4" preload="auto" loop="true" playsinline webkit-playsinline></video>
         </a-assets>
 
         <a-light type="ambient" intensity="3" color="#ffffff"></a-light>
@@ -29,14 +31,40 @@
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-entity mindar-image-target="targetIndex: 0">
-            <a-gltf-model 
-                src="#avatarModel" 
-                scale="0.01 0.01 0.01"
-                position="0 0.5 0.1" 
+        <a-entity mindar-image-target="targetIndex: 0" video-controller>
+            <a-video 
+                src="#mp4Video" 
+                width="1" 
+                height="0.5625" 
+                position="0 0 0" 
                 rotation="0 0 0">
-            </a-gltf-model>
+            </a-video>
         </a-entity>
     </a-scene>
+
+    <script>
+        AFRAME.registerComponent('video-controller', {
+            init: function () {
+                const el = this.el;
+                const video = document.querySelector('#mp4Video');
+
+                // 当识别成功，开始播放视频
+                el.addEventListener('targetFound', function () {
+                    video.play().catch(function(error) {
+                        console.log("浏览器拦截了自动播放，等待用户点击交互:", error);
+                        // 针对部分极严格的手机浏览器，如果被拦截，允许用户点击屏幕任意地方唤醒播放
+                        document.body.addEventListener('click', function() {
+                            video.play();
+                        }, { once: true });
+                    });
+                });
+
+                // 当目标丢失，暂停视频节省性能
+                el.addEventListener('targetLost', function () {
+                    video.pause();
+                });
+            }
+        });
+    </script>
 </body>
 </html>
