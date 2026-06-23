@@ -4,22 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindAR Video Experience</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
         body { 
             margin: 0; 
             overflow: hidden; 
+            background-color: #000000; /* 基础背景设为黑色，防止白屏晃眼 */
         }
-        /* 全螢幕遮罩層：引導使用者點擊以解鎖音訊與鏡頭 */
         #start-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
             display: flex;
             flex-direction: column;
@@ -37,11 +37,6 @@
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            transition: background 0.2s;
-        }
-        #start-btn:active {
-            background: #0056b3;
         }
         .hidden {
             display: none !important;
@@ -57,6 +52,7 @@
     </div>
 
     <a-scene 
+        id="ar-scene"
         mindar-image="imageTargetSrc: ./targets.mind;
                       autoStart: false;
                       filterMinCF: 0.001;
@@ -89,44 +85,19 @@
     </a-scene>
 
     <script>
-        const sceneEl = document.querySelector('a-scene');
-        const video = document.querySelector('#mp4Video');
-        const startBtn = document.querySelector('#start-btn');
-        const startOverlay = document.querySelector('#start-overlay');
-
-        // 當使用者點擊「開啟 AR 體驗」按鈕時觸發
-        startBtn.addEventListener('click', function() {
-            // 1. 【核心黑魔法】在使用者觸發的事件中模擬播放並立即暫停，從而騙過瀏覽器，解除靜音限制
-            video.play().then(() => {
-                video.pause();
-                video.currentTime = 0; // 進度條歸零準備正式播放
-            }).catch(err => {
-                console.log("影片權限解除失敗:", err);
-            });
-
-            // 2. 隱藏全螢幕遮罩層
-            startOverlay.classList.add('hidden');
-
-            // 3. 正式啟動 MindAR 鏡頭掃描
-            sceneEl.systems["mindar-image-system"].start(); 
-        });
-
-        // 影片播放邏輯控制器組件
+        // 在定义组件后再行注册，防止 A-Frame 找不到 target
         AFRAME.registerComponent('video-controller', {
             init: function () {
                 const el = this.el;
+                const video = document.querySelector('#mp4Video');
 
-                // 辨識成功：播放影片
                 el.addEventListener('targetFound', function () {
                     console.log("辨識成功，播放影片");
                     video.play().catch(err => {
-                        console.log("播放仍被攔截，嘗試點擊螢幕任意地方播放:", err);
-                        // 萬一遇到極其嚴格的瀏覽器，允許點擊螢幕任意處補救播放
-                        document.body.addEventListener('click', () => { video.play(); }, { once: true });
+                        console.log("播放被拦截:", err);
                     });
                 });
 
-                // 目標丟失：暫停影片（節省手機效能與耗電）
                 el.addEventListener('targetLost', function () {
                     console.log("目標丟失，暫停影片");
                     video.pause();
@@ -134,7 +105,31 @@
             }
         });
 
-        // 針對微信內置瀏覽器的額外優化補強（如果是微信打開會自動先跑這段）
+        const sceneEl = document.querySelector('#ar-scene');
+        const video = document.querySelector('#mp4Video');
+        const startBtn = document.querySelector('#start-btn');
+        const startOverlay = document.querySelector('#start-overlay');
+
+        startBtn.addEventListener('click', function() {
+            // 激活视频
+            video.play().then(() => {
+                video.pause();
+                video.currentTime = 0;
+            }).catch(err => console.log("视频激活失败:", err));
+
+            // 隐藏遮罩
+            startOverlay.classList.add('hidden');
+
+            // 【安全启动兼容写法】防止因为版本问题找不到 system 导致白屏
+            if (sceneEl.systems && sceneEl.systems["mindar-image-system"]) {
+                sceneEl.systems["mindar-image-system"].start();
+            } else {
+                // 备用启动方案
+                sceneEl.components['mindar-image'].start();
+            }
+        });
+
+        // 微信特殊处理
         document.addEventListener("WeixinJSBridgeReady", function () {
             video.play().then(() => { video.pause(); }).catch(e => console.log(e));
         }, false);
