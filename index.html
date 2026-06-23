@@ -11,14 +11,12 @@
         body { 
             margin: 0; 
             overflow: hidden; 
-            background-color: #000000; /* 基础背景设为黑色，防止白屏晃眼 */
+            background-color: #000000;
         }
         #start-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.9);
             color: white;
             display: flex;
@@ -38,9 +36,7 @@
             cursor: pointer;
             font-weight: bold;
         }
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -64,8 +60,16 @@
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false">
         
-        <a-assets>
-            <video id="mp4Video" src="./1.mp4" preload="auto" loop="true" playsinline webkit-playsinline></video>
+        <a-assets timeout="10000">
+            <!-- 修复1: 移除 preload="auto"，改由 JS 控制，避免加载阻塞 -->
+            <video id="mp4Video" 
+                   src="./1.mp4" 
+                   loop="true" 
+                   muted
+                   playsinline 
+                   webkit-playsinline
+                   crossorigin="anonymous">
+            </video>
         </a-assets>
 
         <a-light type="ambient" intensity="3" color="#ffffff"></a-light>
@@ -85,7 +89,6 @@
     </a-scene>
 
     <script>
-        // 在定义组件后再行注册，防止 A-Frame 找不到 target
         AFRAME.registerComponent('video-controller', {
             init: function () {
                 const el = this.el;
@@ -93,9 +96,7 @@
 
                 el.addEventListener('targetFound', function () {
                     console.log("辨識成功，播放影片");
-                    video.play().catch(err => {
-                        console.log("播放被拦截:", err);
-                    });
+                    video.play().catch(err => console.log("播放被拦截:", err));
                 });
 
                 el.addEventListener('targetLost', function () {
@@ -110,27 +111,44 @@
         const startBtn = document.querySelector('#start-btn');
         const startOverlay = document.querySelector('#start-overlay');
 
-        startBtn.addEventListener('click', function() {
-            // 激活视频
+        // 修复2: 等场景 loaded 后再允许点击启动，避免 system 未初始化
+        let sceneReady = false;
+        sceneEl.addEventListener('loaded', function () {
+            sceneReady = true;
+            console.log("场景已加载完成");
+        });
+
+        startBtn.addEventListener('click', function () {
+            // 修复3: muted 状态下激活视频更可靠（iOS 强制要求）
+            video.muted = true;
             video.play().then(() => {
                 video.pause();
                 video.currentTime = 0;
             }).catch(err => console.log("视频激活失败:", err));
 
-            // 隐藏遮罩
             startOverlay.classList.add('hidden');
 
-            // 【安全启动兼容写法】防止因为版本问题找不到 system 导致白屏
-            if (sceneEl.systems && sceneEl.systems["mindar-image-system"]) {
-                sceneEl.systems["mindar-image-system"].start();
+            // 修复4: 统一用 system 启动，加 sceneReady 双重保险
+            const tryStart = () => {
+                const mindARSystem = sceneEl.systems["mindar-image-system"];
+                if (mindARSystem) {
+                    mindARSystem.start();
+                } else {
+                    console.warn("MindAR system 未就绪，重试中...");
+                    setTimeout(tryStart, 300);
+                }
+            };
+
+            if (sceneReady) {
+                tryStart();
             } else {
-                // 备用启动方案
-                sceneEl.components['mindar-image'].start();
+                sceneEl.addEventListener('loaded', tryStart, { once: true });
             }
         });
 
         // 微信特殊处理
         document.addEventListener("WeixinJSBridgeReady", function () {
+            video.muted = true;
             video.play().then(() => { video.pause(); }).catch(e => console.log(e));
         }, false);
     </script>
