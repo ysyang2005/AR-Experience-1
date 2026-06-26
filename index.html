@@ -92,41 +92,10 @@
         .menu-btn:active { transform: scale(0.95); border-color: var(--accent-gold); }
 
         /* ==========================================================================
-           2. 劇情冒險畫面（流式上下結構）
+           2. 劇情冒險畫面（純對話框佈局）
            ========================================================================= */
         #adventure-screen { justify-content: flex-end; padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
         
-        /* 修改後的立繪顯示區域：確保無框且支持漸變 */
-        .sprite-area {
-            flex: 1;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            pointer-events: none;
-            z-index: 3;
-            margin-bottom: -10px; /* 讓立繪與對話框自然交疊 */
-            overflow: hidden; /* 確保漸變效果在區域內 */
-        }
-        .character-sprite {
-            max-height: 70vh; /* 限制最大高度 */
-            max-width: 100%;
-            object-fit: contain; /* 核心：確保原圖比例完美 */
-            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.7));
-            position: absolute; /* 絕對定位以便堆疊 */
-            bottom: 0; /* 底部對齊 */
-            left: 50%; /* 水平居中 */
-            transform: translateX(-50%); /* 水平居中修正 */
-            
-            /* 新增漸消漸現過渡效果 */
-            opacity: 0; /* 默認透明 */
-            transition: opacity 0.5s ease; /* 漸變時間為 0.5s */
-        }
-        .character-sprite.active { 
-            opacity: 1; /* 顯示時不透明度為 1 */
-            z-index: 4; /* 確保當前立繪在上方 */
-        }
-
         /* 下置型對話框 */
         .dialogue-box {
             background: var(--panel-bg); border: 2px solid rgba(51, 65, 85, 0.85);
@@ -145,11 +114,10 @@
         .next-indicator { position: absolute; bottom: 12px; right: 16px; color: var(--accent-gold); animation: pulse 1.5s infinite; font-size: 12px; }
 
         /* ==========================================================================
-           3. 解密互動畫面（寬度百分比自適應，不壓扁）
+           3. 解密互動畫面
            ========================================================================= */
         #puzzle-screen { justify-content: center; align-items: center; z-index: 20; background: rgba(2, 6, 23, 0.5); }
         
-        /* 面板寬度改為 100% 流式，利用 max-width 兼容大屏，絕不擠壓變形 */
         .center-puzzle-panel {
             width: 100%;
             max-width: 350px; 
@@ -197,8 +165,6 @@
 
         /* 動畫特製 */
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        /* 移除原本的 spriteFadeIn，改用 opacity transition */
-        /* @keyframes spriteFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } } */
         @keyframes pulse { 0%, 100% { opacity: 0.5; transform: translateX(0); } 50% { opacity: 1; transform: translateX(3px); } }
         @keyframes panelShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
     </style>
@@ -218,10 +184,7 @@
         </div>
 
         <div id="adventure-screen" class="screen">
-            <div class="sprite-area">
-                <img id="sprite-elena" class="character-sprite" src="char_elena.png" alt="艾蓮娜">
-                <img id="sprite-mc" class="character-sprite" src="char_mc.png" alt="主角">
-            </div>
+            <!-- 移除原有的 .sprite-area 立繪區域，直接保留對話框 -->
             <div class="dialogue-box" onclick="handleDialogueClick()">
                 <div id="char-name" class="character-name">系統</div>
                 <div id="char-text" class="dialogue-text"></div>
@@ -270,20 +233,20 @@
     </div>
 
     <script>
-        // --- 1. 劇本數據配置 (新增立繪控制欄位) ---
+        // --- 1. 劇本數據配置 (已移除所有 sprite 控制欄位) ---
         const script = [
-            { id: 0, name: "艾蓮娜", text: "（舉高火把，嗆得咳嗽）咳、咳……我的天，這裡至少有一百年沒人進來過了。我們真的找對地方了嗎？", bg: "bg-cave", nameClass: "elena", sprite: "elena" },
-            { id: 1, name: "主角", text: "傳說紅旗幫的海盜王鄭一，在接受朝廷招安前，將他大半生的秘寶藏在了伶仃洋。關於寶藏的線索則藏在了....。", bg: "bg-cave", nameClass: "mc", sprite: "mc" },
-            { id: 2, name: "艾蓮娜", text: "快看前面！那面粗糙的石壁上……好像刻著西洋人的英文字母！", bg: "bg-wall-glow", nameClass: "elena", sprite: "elena" },
-            { id: 3, name: "主角", text: "這不對勁。鄭一可是活躍在清代年間的中國海盜，為什麼會留下這種密碼？字跡很新，這顯然被他們的後人『更新』過。", bg: "bg-wall-glow", nameClass: "mc", sprite: "mc" },
-            { id: 4, name: "艾蓮娜", text: "提示上寫著：『把那場災難之年的宣告（1835），化作高貴的異國之語……』1835年到底發生了什麼災難？", bg: "bg-wall-glow", nameClass: "elena", sprite: "elena" },
-            { id: 5, name: "主角", text: "1835年……那一年在遠東發生最震撼的事，莫過於聖保羅大教堂的那場徹夜大火，將整座宏偉的建築燒得只剩下一面正門前壁。", bg: "bg-wall-glow", nameClass: "mc", sprite: "mc" },
-            { id: 6, name: "艾蓮娜", text: "啊！也就是現在澳門著名的——大三巴牌坊！那場大火在當時被形容為一場徹頭徹尾的『災難』！", bg: "bg-wall-glow", nameClass: "elena", sprite: "elena" },
-            { id: 7, name: "主角", text: "沒錯，『災難』的英文單字就是關鍵。艾蓮娜，幫我展開密碼對照表，我們必須解開這面牆上的多表密碼鎖！", bg: "bg-wall-glow", nameClass: "mc", sprite: "mc", triggerPuzzle: true },
-            { id: 8, name: "艾蓮娜", text: "（石壁內傳出沉重的齒輪咬合聲）成功了！明文真的還原出了『S.PAULO』！也就是聖保羅大教堂！", bg: "bg-success", nameClass: "elena", sprite: "elena" },
-            { id: 9, name: "主角", text: "大火之後，教堂廢墟成了無人看管的荒地，魚龍混雜。海盜餘部把真正的祕寶轉移到了大三巴牌坊的地底！", bg: "bg-success", nameClass: "mc", sprite: "mc" },
-            { id: 10, name: "艾蓮娜", text: "太棒了！找到了下一個目的地指引。事不宜遲，我們的下一站：澳門，大三巴牌坊！", bg: "bg-success", nameClass: "elena", sprite: "elena" },
-            { id: 11, name: "系統", text: "【第一章：塵封的聖保羅之火】成功通關。感謝您的遊玩！", bg: "bg-start", nameClass: "system", sprite: "none", isEnd: true }
+            { id: 0, name: "艾蓮娜", text: "（舉高火把，嗆得咳嗽）咳、咳……我的天，這裡至少有一百年沒人進來過了。我們真的找對地方了嗎？", bg: "bg-cave", nameClass: "elena" },
+            { id: 1, name: "主角", text: "傳說紅旗幫的海盜王鄭一，在接受朝廷招安前，將他大半生的秘寶藏在了伶仃洋。關於寶藏的線索則藏在了....。", bg: "bg-cave", nameClass: "mc" },
+            { id: 2, name: "艾蓮娜", text: "快看前面！那面粗糙的石壁上……好像刻著西洋人的英文字母！", bg: "bg-wall-glow", nameClass: "elena" },
+            { id: 3, name: "主角", text: "這不對勁。鄭一可是活躍在清代年間的中國海盜，為什麼會留下這種密碼？字跡很新，這顯然被他們的後人『更新』過。", bg: "bg-wall-glow", nameClass: "mc" },
+            { id: 4, name: "艾蓮娜", text: "提示上寫著：『把那場災難之年的宣告（1835），化作高貴的異國之語……』1835年到底發生了什麼災難？", bg: "bg-wall-glow", nameClass: "elena" },
+            { id: 5, name: "主角", text: "1835年……那一年在遠東發生最震撼的事，莫過於聖保羅大教堂的那場徹夜大火，將整座宏偉的建築燒得只剩下一面正門前壁。", bg: "bg-wall-glow", nameClass: "mc" },
+            { id: 6, name: "艾蓮娜", text: "啊！也就是現在澳門著名的——大三巴牌坊！那場大火在當時被形容為一場徹頭徹尾的『災難』！", bg: "bg-wall-glow", nameClass: "elena" },
+            { id: 7, name: "主角", text: "沒錯，『災難』的英文單字就是關鍵。艾蓮娜，幫我展開密碼對照表，我們必須解開這面牆上的多表密碼鎖！", bg: "bg-wall-glow", nameClass: "mc", triggerPuzzle: true },
+            { id: 8, name: "艾蓮娜", text: "（石壁內傳出沉重的齒輪咬合聲）成功了！明文真的還原出了『S.PAULO』！也就是聖保羅大教堂！", bg: "bg-success", nameClass: "elena" },
+            { id: 9, name: "主角", text: "大火之後，教堂廢墟成了無人看管的荒地，魚龍混雜。海盜餘部把真正的祕寶轉移到了大三巴牌坊的地底！", bg: "bg-success", nameClass: "mc" },
+            { id: 10, name: "艾蓮娜", text: "太棒了！找到了下一個目的地指引。事不宜遲，我們的下一站：澳門，大三巴牌坊！", bg: "bg-success", nameClass: "elena" },
+            { id: 11, name: "系統", text: "【第一章：塵封的聖保羅之火】成功通關。感謝您的遊玩！", bg: "bg-start", nameClass: "system", isEnd: true }
         ];
 
         let currentIndex = 0;
@@ -295,7 +258,7 @@
         let isTyping = false;
         let currentFullText = "";
 
-        // --- 2. 打字機核心效果引擎（流暢換行，絕不丟失） ---
+        // --- 2. 打字機核心效果引擎 ---
         function startTypewriter(text, elementId, speed = 40) {
             clearInterval(typewriterTimer);
             isTyping = true;
@@ -320,7 +283,6 @@
             isTyping = false;
         }
 
-        // 處理對話框點擊：如果在打字中則「瞬間跳完」，否則進入下一句
         function handleDialogueClick() {
             if (isTyping) {
                 completeTypewriter();
@@ -361,24 +323,6 @@
             
             // 啟動打字機效果
             startTypewriter(node.text, 'char-text', 45);
-
-            // 立繪精準變換控制（修改為漸消漸現）
-            // 獲取所有立繪元素
-            const elenaSprite = document.getElementById('sprite-elena');
-            const mcSprite = document.getElementById('sprite-mc');
-
-            // 設置當前應顯示的立繪，其餘淡出
-            if (node.sprite === 'elena') {
-                elenaSprite.classList.add('active');
-                mcSprite.classList.remove('active');
-            } else if (node.sprite === 'mc') {
-                elenaSprite.classList.remove('active');
-                mcSprite.classList.add('active');
-            } else {
-                // 如果是 none 或其它，全部淡出
-                elenaSprite.classList.remove('active');
-                mcSprite.classList.remove('active');
-            }
         }
 
         function advanceDialogue() {
@@ -400,7 +344,7 @@
             const correctAnswer = "SPAULO";
 
             if (keyInput === correctKey && answerInput === correctAnswer) {
-                document.activeElement.blur(); // 隱藏手機軟鍵盤
+                document.activeElement.blur(); 
                 feedback.style.color = "#10b981";
                 feedback.textContent = "解密成功！機關已開啟！";
                 feedback.classList.add('visible');
@@ -416,7 +360,6 @@
                 playerHP--;
                 document.getElementById('hp-display').innerHTML = `<i class="fa-solid fa-heart"></i> 剩餘: ${playerHP}`;
                 
-                // 處罰效果：核心面板震動 + 邊緣血光微閃（絕不暴露網頁底色）
                 const panel = document.getElementById('puzzle-panel');
                 panel.classList.add('shake');
                 vignette.style.background = 'radial-gradient(circle, rgba(239, 68, 68, 0.35) 30%, rgba(0,0,0,0.95) 100%)';
