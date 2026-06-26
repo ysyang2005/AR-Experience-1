@@ -2,13 +2,13 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>萬事皆桔 - 第二幕：手鍊的秘密</title>
     <style>
         :root {
             --theme-gold: #d4af37;
             --theme-orange: #ff7b00;
-            --glass-bg: rgba(15, 15, 25, 0.85);
+            --glass-bg: rgba(15, 15, 25, 0.75);
             --glass-border: rgba(212, 175, 55, 0.3);
         }
 
@@ -21,26 +21,32 @@
             -webkit-touch-callout: none;
         }
         
+        /* 讓外層容器黑底，防止手機端縮放後邊緣留白難看 */
         body, html { 
             width: 100%; 
             height: 100%; 
             overflow: hidden; 
             font-family: 'Noto Serif TC', 'PingFang HK', serif; 
-            background: #05060a; 
+            background: #000000; 
             color: #f5f5f7; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         
+        /* 🎯 核心機制：固定一個標準 16:9 的虛擬畫布 (以 1280x720 為基準) */
         #game-stage { 
             position: relative; 
-            width: 100%; 
-            height: 100%; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
+            width: 1280px; 
+            height: 720px; 
             overflow: hidden;
+            background: #05060a;
+            /* 設置縮放中心點為正中央 */
+            transform-origin: center center; 
+            flex-shrink: 0;
         }
         
-        /* 背景 */
+        /* 溫暖店內背景 */
         #background { 
             position: absolute; 
             width: 100%; 
@@ -49,7 +55,6 @@
             background-size: cover; 
             background-position: center; 
             filter: brightness(0.9); 
-            transition: all 1.2s ease; 
             z-index: 1; 
         }
         #ambient-glow { 
@@ -61,93 +66,57 @@
             background: radial-gradient(circle at 50% 50%, rgba(255,165,0,0.15), rgba(0,0,0,0.4)); 
         }
         
-        /* 對話框 */
+        /* 對話框 UI */
         #dialogue-box { 
             position: absolute; 
-            bottom: 5%; 
+            bottom: 40px; 
             left: 50%; 
             transform: translateX(-50%); 
-            width: 90%; 
+            width: 85%; 
             max-width: 900px; 
-            height: 150px; 
+            height: 160px; 
             background: var(--glass-bg); 
-            backdrop-filter: blur(20px); 
-            -webkit-backdrop-filter: blur(20px); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px); 
             border: 1px solid var(--glass-border); 
             border-radius: 12px; 
             z-index: 5; 
-            padding: 20px 25px; 
+            padding: 25px 35px; 
             cursor: pointer; 
             display: none; 
             box-shadow: 0 15px 35px rgba(0,0,0,0.6); 
         }
+        #speaker-name { font-size: 1.2rem; font-weight: 600; color: var(--theme-gold); margin-bottom: 12px; letter-spacing: 2px; }
+        #dialogue-text { font-size: 1.05rem; line-height: 1.8; color: #f0f0f5; letter-spacing: 1px; font-weight: 300; }
+        #next-arrow { position: absolute; bottom: 15px; right: 25px; font-size: 0.85rem; color: var(--theme-gold); animation: float 2s infinite ease-in-out; }
         
-        #speaker-name { 
-            font-size: 1.15rem; 
-            font-weight: 600; 
-            color: var(--theme-gold); 
-            margin-bottom: 8px; 
-            letter-spacing: 2px; 
-        }
-        
-        #dialogue-text { 
-            font-size: 0.98rem; 
-            line-height: 1.7; 
-            color: #f0f0f5; 
-            letter-spacing: 1px; 
-            font-weight: 300; 
-            word-wrap: break-word;
-        }
-        
-        #next-arrow { 
-            position: absolute; 
-            bottom: 12px; 
-            right: 20px; 
-            font-size: 0.8rem; 
-            color: var(--theme-gold); 
-            animation: float 2s infinite ease-in-out; 
-        }
-        
-        /* 💻 【電腦端佈局】阿婆在左，手鍊在右 */
+        /* 💻 保持最原始、不做手機端位移的相對佈局 */
+        /* 阿婆立繪：依然在左邊 35% 位置 */
         #character-layer { 
             position: absolute; 
-            bottom: 22%; 
+            bottom: 180px; 
             left: 35%; 
             transform: translateX(-50%); 
-            height: 52%; 
+            height: 55%; 
             max-height: 500px; 
             z-index: 4; 
             pointer-events: none; 
-            transition: all 0.6s ease-in-out;
         }
-        #character-img { 
-            height: 100%; 
-            opacity: 0; 
-            transform: translateY(20px); 
-            transition: opacity 0.8s ease, transform 0.8s ease; 
-        }
+        #character-img { height: 100%; opacity: 0; transform: translateY(20px); transition: opacity 0.8s ease, transform 0.8s ease; }
         
+        /* 手鍊圖片：依然在右邊 65% 位置，兩者絕不重疊 */
         #item-container { 
             position: absolute; 
-            bottom: 25%; 
+            bottom: 220px; 
             left: 65%; 
             transform: translateX(-50%); 
-            width: 40vw;
-            max-width: 420px;
-            aspect-ratio: 16 / 9; 
+            height: 42%; 
+            max-height: 420px; 
             z-index: 4; 
             display: none; 
-            transition: all 0.6s ease-in-out;
+            aspect-ratio: 16 / 9; 
         }
-        
-        #item-img { 
-            width: 100%; 
-            height: 100%; 
-            opacity: 0; 
-            transition: opacity 1s ease; 
-            display: block; 
-            object-fit: contain; 
-        }
+        #item-img { height: 100%; width: 100%; opacity: 0; transition: opacity 1s ease; display: block; object-fit: contain; }
 
         /* 隱形點擊熱點 */
         .hotspot { 
@@ -159,62 +128,17 @@
             outline: none;
             -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
         }
-        .hotspot:hover, .hotspot.clicked { 
-            background: rgba(0, 0, 0, 0); 
-            border: 1px solid transparent; 
-            box-shadow: none; 
-        }
+        .hotspot:hover, .hotspot.clicked { background: rgba(0, 0, 0, 0); border: 1px solid transparent; box-shadow: none; }
 
-        /* 熱點相對坐標比例 */
+        /* 精準熱區坐標（不變） */
         #hotspot-tangerine { top: 66%; left: 32%; width: 13%; height: 22%; }
         #hotspot-jade { top: 63%; left: 54%; width: 11%; height: 13%; border-radius: 40%; }
         #hotspot-redbeads { top: 36%; left: 24.5%; width: 10%; height: 16%; }
 
-        #action-btn { 
-            position: absolute; 
-            bottom: 30%; 
-            z-index: 5; 
-            padding: 12px 35px; 
-            background: transparent; 
-            color: var(--theme-gold); 
-            border: 1px solid var(--theme-gold); 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 1rem; 
-            font-weight: 300; 
-            letter-spacing: 4px; 
-            transition: all 0.4s ease; 
-        }
+        #action-btn { position: absolute; bottom: 220px; z-index: 5; padding: 12px 35px; background: transparent; color: var(--theme-gold); border: 1px solid var(--theme-gold); border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 300; letter-spacing: 4px; transition: all 0.4s ease; }
         #action-btn:hover { background: rgba(212, 175, 55, 0.1); box-shadow: 0 0 15px rgba(212,175,55,0.3); }
 
         @keyframes float { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-4px); opacity: 1; } }
-
-        /* 📱 【手機端（豎屏）完美適配樣式】 */
-        @media (max-width: 768px) {
-            /* 1. 阿婆位置往上挪移並縮小，置於畫面上半部分，騰出空間 */
-            #character-layer {
-                left: 50%;     
-                bottom: 48%;   
-                height: 38%;   
-            }
-            
-            /* 2. 手鍊在手機端水平居中，置於阿婆下方、對話框上方，完美錯開 */
-            #item-container {
-                left: 50%;
-                bottom: 25%;   
-                width: 85vw;   /* 寬度擴大，方便手機觸摸 */
-            }
-            
-            #dialogue-box {
-                height: 135px; 
-                padding: 15px 20px;
-                bottom: 3%;
-            }
-
-            #action-btn {
-                bottom: 25%;
-            }
-        }
     </style>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600&display=swap">
 </head>
@@ -244,6 +168,30 @@
 </div>
 
 <script>
+    // 🎯 新增：全畫面自動等比例縮放自適應函數
+    function autoScaleStage() {
+        const stage = document.getElementById('game-stage');
+        const baseWidth = 1280;
+        const baseHeight = 720;
+        
+        // 獲取當前手機或瀏覽器視窗的實際寬高
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        // 計算寬高縮放比，選擇最小的比例以確保內容完全顯示在屏幕內（Contain 模式）
+        const scaleX = windowWidth / baseWidth;
+        const scaleY = windowHeight / baseHeight;
+        const scale = Math.min(scaleX, scaleY);
+        
+        // 套用 CSS Transform 縮放
+        stage.style.transform = `scale(${scale})`;
+    }
+
+    // 監聽初始化與屏幕旋轉/縮放事件
+    window.addEventListener('resize', autoScaleStage);
+    window.addEventListener('DOMContentLoaded', autoScaleStage);
+
+    // --- 遊戲邏輯與對話劇本不變 ---
     const script = [
         { name: "敘述", text: "一跨進門，滾燙的熱茶香氣便裹挾著淡淡的檀香撲面而來，將外頭的寒雨隔絕在另一個世界。" },
         { name: "阿婆", text: "「來，孩子。先喝口熱茶，暖暖身子。」" },
@@ -251,7 +199,6 @@
         { name: "敘述", text: "櫃檯正中央，一束溫暖柔和的光線靜靜垂落。光影下，一個精緻的絲絨托盤裡正躺著一條流光溢彩的手鍊。" },
         { name: "我", text: "「這條手鍊……好美。上面好像有些不一樣的細節？」" },
         { name: "提示", text: "【請點擊手鍊上的 橘子、黃色珠子、紅色珠子 進行細緻觀察】" },
-        // 解謎攔截點
         { name: "阿婆", text: "「呵呵，看來你觀察得很仔細。這條手鍊的每一部分，都有它在等待的緣分。」" },
         { name: "我", text: "「1300°C 淬鍊的小桔子，溫潤的黃玉珠，還有沉穩的紅瑪瑙……」" },
         { name: "阿婆", text: "「不差分毫。整條手鍊全長 18.5 厘米，不多不少，正好能完美貼合你此刻的手腕。這便是因緣。」" }
@@ -285,7 +232,6 @@
         if (currentLine === 6 && !checkPuzzleSolved()) {
             puzzleMode = true;
             document.getElementById('next-arrow').style.display = 'none';
-            // 進入互動解謎時，將阿婆完全淡出，騰出全部視野給玩家點擊
             document.getElementById('character-img').style.opacity = '0';
             return;
         }
@@ -338,7 +284,6 @@
         if (checkPuzzleSolved()) {
             puzzleMode = false;
             setTimeout(() => {
-                // 解謎完成後，阿婆重新溫柔淡入回來
                 document.getElementById('character-img').style.opacity = '1';
                 document.getElementById('next-arrow').style.display = 'block';
                 currentLine = 6;
