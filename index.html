@@ -3,298 +3,753 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>萬事皆桔 - 第二幕：手鍊的秘密</title>
+    <title>海盜王的遺產：塵封的大三巴</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         :root {
-            --theme-gold: #d4af37;
-            --theme-orange: #ff7b00;
-            --glass-bg: rgba(15, 15, 25, 0.75);
-            --glass-border: rgba(212, 175, 55, 0.3);
+            --bg-dark: #0b0f19;
+            --panel-bg: rgba(15, 23, 42, 0.85); 
+            --panel-border: rgba(251, 191, 36, 0.3); 
+            --accent-gold: #fbbf24;
+            --accent-glow: rgba(251, 191, 36, 0.3);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --character-elena: #38bdf8;
+            --character-mc: #fb7185;
+            --accent-red: #ef4444;
         }
 
-        * { 
-            box-sizing: border-box; 
-            margin: 0; 
-            padding: 0; 
-            user-select: none; 
-            -webkit-user-select: none;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none; /* 針對 iOS 禁用文字選取 */
             -webkit-touch-callout: none;
         }
-        
-        /* 讓外層容器黑底，防止手機端縮放後邊緣留白難看 */
-        body, html { 
-            width: 100%; 
-            height: 100%; 
-            overflow: hidden; 
-            font-family: 'Noto Serif TC', 'PingFang HK', serif; 
-            background: #000000; 
-            color: #f5f5f7; 
+
+        body {
+            background-color: #020617;
+            color: var(--text-main);
+            font-family: 'Noto Serif TC', serif;
             display: flex;
             justify-content: center;
             align-items: center;
-        }
-        
-        /* 🎯 核心機制：固定一個標準 16:9 的虛擬畫布 (以 1280x720 為基準) */
-        #game-stage { 
-            position: relative; 
-            width: 1280px; 
-            height: 720px; 
+            min-height: 100vh;
             overflow: hidden;
-            background: #05060a;
-            /* 設置縮放中心點為正中央 */
-            transform-origin: center center; 
+            /* 防止行動端橡皮筋回彈效果 */
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 遊戲視窗：標準 16:9 比例，加入 transform 基准點與 flex 控制 */
+        #game-container {
+            width: 1120px;
+            height: 630px;
+            background-color: var(--bg-dark);
+            border: 4px solid #1e293b;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            transform-origin: center center;
             flex-shrink: 0;
         }
-        
-        /* 溫暖店內背景 */
-        #background { 
-            position: absolute; 
-            width: 100%; 
-            height: 100%; 
-            background-image: url('bg_interior.jpg'); 
-            background-size: cover; 
-            background-position: center; 
-            filter: brightness(0.9); 
-            z-index: 1; 
-        }
-        #ambient-glow { 
-            position: absolute; 
-            width: 100%; 
-            height: 100%; 
-            z-index: 2; 
-            pointer-events: none; 
-            background: radial-gradient(circle at 50% 50%, rgba(255,165,0,0.15), rgba(0,0,0,0.4)); 
-        }
-        
-        /* 對話框 UI */
-        #dialogue-box { 
-            position: absolute; 
-            bottom: 40px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            width: 85%; 
-            max-width: 900px; 
-            height: 160px; 
-            background: var(--glass-bg); 
-            backdrop-filter: blur(16px); 
-            -webkit-backdrop-filter: blur(16px); 
-            border: 1px solid var(--glass-border); 
-            border-radius: 12px; 
-            z-index: 5; 
-            padding: 25px 35px; 
-            cursor: pointer; 
-            display: none; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.6); 
-        }
-        #speaker-name { font-size: 1.2rem; font-weight: 600; color: var(--theme-gold); margin-bottom: 12px; letter-spacing: 2px; }
-        #dialogue-text { font-size: 1.05rem; line-height: 1.8; color: #f0f0f5; letter-spacing: 1px; font-weight: 300; }
-        #next-arrow { position: absolute; bottom: 15px; right: 25px; font-size: 0.85rem; color: var(--theme-gold); animation: float 2s infinite ease-in-out; }
-        
-        /* 💻 保持最原始、不做手機端位移的相對佈局 */
-        /* 阿婆立繪：依然在左邊 35% 位置 */
-        #character-layer { 
-            position: absolute; 
-            bottom: 180px; 
-            left: 35%; 
-            transform: translateX(-50%); 
-            height: 55%; 
-            max-height: 500px; 
-            z-index: 4; 
-            pointer-events: none; 
-        }
-        #character-img { height: 100%; opacity: 0; transform: translateY(20px); transition: opacity 0.8s ease, transform 0.8s ease; }
-        
-        /* 手鍊圖片：依然在右邊 65% 位置，兩者絕不重疊 */
-        #item-container { 
-            position: absolute; 
-            bottom: 220px; 
-            left: 65%; 
-            transform: translateX(-50%); 
-            height: 42%; 
-            max-height: 420px; 
-            z-index: 4; 
-            display: none; 
-            aspect-ratio: 16 / 9; 
-        }
-        #item-img { height: 100%; width: 100%; opacity: 0; transition: opacity 1s ease; display: block; object-fit: contain; }
 
-        /* 隱形點擊熱點 */
-        .hotspot { 
-            position: absolute; 
-            border-radius: 50%; 
-            cursor: pointer; 
-            background: rgba(0, 0, 0, 0); 
-            border: 1px solid transparent;
+        /* 錯誤懲罰震動 */
+        .shake {
+            animation: containerShake 0.4s linear;
+        }
+
+        /* 背景層：全螢幕 */
+        .background-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.8s ease-in-out;
+            z-index: 1;
+        }
+
+        /* 暗部遮罩 */
+        .vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.85) 100%);
+            pointer-events: none;
+            z-index: 2;
+            transition: background 0.2s ease;
+        }
+
+        /* 畫面切換基底 */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            display: none;
+            flex-direction: column;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* ==========================================================================
+           1. 標題畫面
+           ========================================================================== */
+        #title-screen {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .title-logo {
+            margin-bottom: 40px;
+            animation: fadeInDown 1.2s ease;
+        }
+
+        .title-logo h1 {
+            font-size: 56px;
+            color: var(--accent-gold);
+            letter-spacing: 6px;
+            text-shadow: 0 0 20px var(--accent-glow), 0px 4px 8px rgba(0, 0, 0, 0.8);
+            margin-bottom: 10px;
+        }
+
+        .title-logo p {
+            font-size: 18px;
+            color: var(--text-main);
+            letter-spacing: 4px;
+        }
+
+        .menu-btn {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(51, 65, 85, 0.7);
+            color: var(--text-main);
+            padding: 14px 50px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            -webkit-tap-highlight-color: transparent; /* 清除手機點擊高亮藍塊 */
+        }
+
+        .menu-btn:hover {
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        /* ==========================================================================
+           2. 冒險/劇情畫面 (Visual Novel)
+           ========================================================================== */
+        #adventure-screen {
+            justify-content: flex-end;
+            padding: 24px;
+        }
+
+        .intel-badge {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: rgba(18, 26, 44, 0.9);
+            border: 1px solid rgba(51, 65, 85, 0.7);
+            padding: 10px 16px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--accent-gold);
+            z-index: 10;
+        }
+
+        .dialogue-box {
+            background: rgba(18, 26, 44, 0.9);
+            border: 2px solid rgba(51, 65, 85, 0.7);
+            border-radius: 12px;
+            padding: 24px 32px;
+            width: 100%;
+            height: 160px;
+            position: relative;
+            backdrop-filter: blur(8px);
+            cursor: pointer;
+            z-index: 10;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .character-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: inline-block;
+            border-bottom: 2px solid transparent;
+        }
+
+        .character-name.elena { color: var(--character-elena); border-color: var(--character-elena); }
+        .character-name.mc { color: var(--character-mc); border-color: var(--character-mc); }
+        .character-name.system { color: var(--accent-gold); border-color: var(--accent-gold); }
+
+        .dialogue-text {
+            font-size: 17px;
+            line-height: 1.6;
+        }
+
+        .next-indicator {
+            position: absolute;
+            bottom: 16px;
+            right: 24px;
+            color: var(--accent-gold);
+            animation: pulse 1.5s infinite;
+            font-size: 14px;
+        }
+
+        /* ==========================================================================
+           3. 核心解密互動畫面
+           ========================================================================== */
+        #puzzle-screen {
+            justify-content: center;
+            align-items: center;
+            background: transparent; 
+            z-index: 20;
+        }
+
+        .center-puzzle-panel {
+            width: 620px;
+            background: var(--panel-bg);
+            border: 2px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(8px); 
+            animation: fadeInDown 0.5s ease;
+        }
+
+        .puzzle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .puzzle-title {
+            font-size: 20px;
+            color: var(--accent-gold);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .hp-container {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 15px;
+            color: var(--accent-red);
+            letter-spacing: 1px;
+            background: rgba(239, 68, 68, 0.15);
+            padding: 4px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .center-cipher-box {
+            text-align: center;
+            background: rgba(2, 6, 23, 0.7);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px dashed rgba(251, 191, 36, 0.3);
+        }
+
+        .cipher-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .engraved-cipher {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 44px;
+            letter-spacing: 12px;
+            font-weight: 700;
+            color: #fef08a;
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.7), 
+                         0 0 25px rgba(251, 191, 36, 0.3),
+                         2px 2px 4px rgba(0,0,0,0.9);
+            animation: textGlow 2s ease-in-out infinite alternate;
+        }
+
+        .clue-box {
+            background: rgba(2, 6, 23, 0.5);
+            border-left: 4px solid var(--accent-gold);
+            padding: 10px 14px;
+            font-size: 13.5px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .explanation-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(251, 191, 36, 0.15);
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+
+        .explanation-title {
+            color: var(--accent-gold);
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .explanation-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Share Tech Mono', 'Noto Serif TC', monospace;
+            text-align: center;
+            font-size: 11.5px;
+        }
+
+        .explanation-table th, .explanation-table td {
+            padding: 3px;
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+
+        .explanation-table th {
+            background: #0f172a;
+            color: var(--text-muted);
+        }
+
+        .formula-highlight {
+            color: var(--accent-gold);
+            font-weight: bold;
+        }
+
+        .inputs-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-group label {
+            font-size: 12.5px;
+            color: var(--text-muted);
+        }
+
+        .input-group input {
+            background: #020617;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-main);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 15px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+            /* 針對 iOS 網頁輸入框優化內陰影 */
+            -webkit-appearance: none;
+        }
+
+        .input-group input:focus {
             outline: none;
-            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 8px var(--accent-glow);
         }
-        .hotspot:hover, .hotspot.clicked { background: rgba(0, 0, 0, 0); border: 1px solid transparent; box-shadow: none; }
 
-        /* 精準熱區坐標（不變） */
-        #hotspot-tangerine { top: 66%; left: 32%; width: 13%; height: 22%; }
-        #hotspot-jade { top: 63%; left: 54%; width: 11%; height: 13%; border-radius: 40%; }
-        #hotspot-redbeads { top: 36%; left: 24.5%; width: 10%; height: 16%; }
+        .matrix-preview {
+            background: #020617;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+            padding: 6px 10px;
+        }
 
-        #action-btn { position: absolute; bottom: 220px; z-index: 5; padding: 12px 35px; background: transparent; color: var(--theme-gold); border: 1px solid var(--theme-gold); border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 300; letter-spacing: 4px; transition: all 0.4s ease; }
-        #action-btn:hover { background: rgba(212, 175, 55, 0.1); box-shadow: 0 0 15px rgba(212,175,55,0.3); }
+        .matrix-row {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--text-muted);
+            word-break: break-all;
+            line-height: 1.3;
+            font-size: 11px;
+            text-align: center;
+        }
 
-        @keyframes float { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-4px); opacity: 1; } }
+        .action-container {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            font-family: 'Noto Serif TC', serif;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-submit { background: var(--accent-gold); color: #020617; font-weight: bold; }
+        .btn-submit:hover { background: #fcd34d; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
+        .btn-hint { background: transparent; border-color: rgba(148, 163, 184, 0.3); color: var(--text-muted); }
+        .btn-hint:hover { border-color: var(--text-main); color: var(--text-main); }
+
+        .feedback-msg {
+            font-size: 12.5px;
+            color: var(--accent-red);
+            min-height: 18px;
+            transition: opacity 0.3s;
+            opacity: 0;
+            text-align: center;
+        }
+
+        .feedback-msg.visible { opacity: 1; }
+
+        /* 背景圖片路徑設置 */
+        .bg-start { background-image: url('bg_start.jpg'); }
+        .bg-cave { background-image: url('bg_cave.jpg'); }
+        .bg-wall-glow { background-image: url('bg_wall_glow.jpg'); }
+        .bg-success { background-image: url('bg_success.jpg'); }
+
+        /* 精緻動畫 */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(4px); }
+        }
+
+        @keyframes containerShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        @keyframes textGlow {
+            from { text-shadow: 0 0 10px rgba(251, 191, 36, 0.5), 0 0 20px rgba(251, 191, 36, 0.2), 2px 2px 4px rgba(0,0,0,0.9); }
+            to { text-shadow: 0 0 18px rgba(251, 191, 36, 0.9), 0 0 30px rgba(251, 191, 36, 0.4), 2px 2px 4px rgba(0,0,0,0.9); }
+        }
     </style>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600&display=swap">
 </head>
 <body>
 
-<div id="game-stage">
-    <div id="background"></div>
-    <div id="ambient-glow"></div>
+    <div id="game-container">
+        <div id="game-bg" class="background-layer bg-start"></div>
+        <div id="game-vignette" class="vignette"></div>
 
-    <button id="action-btn" onclick="startAct2()">步入店內</button>
+        <div id="title-screen" class="screen active">
+            <div class="title-logo">
+                <h1>海盜王的遺產</h1>
+                <p>— 塵封的大三巴 —</p>
+            </div>
+            <button class="menu-btn" onclick="startGame()">開啟調查</button>
+        </div>
 
-    <div id="item-container">
-        <img id="item-img" src="bracelet_box.png" alt="手鍊">
-        
-        <div id="hotspot-tangerine" class="hotspot" onclick="clickHotspot('tangerine')"></div>
-        <div id="hotspot-jade" class="hotspot" onclick="clickHotspot('jade')"></div>
-        <div id="hotspot-redbeads" class="hotspot" onclick="clickHotspot('redbeads')"></div>
+        <div id="adventure-screen" class="screen">
+            <div class="intel-badge" id="intel-badge" style="display: none;">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <span>發現古老座標線索</span>
+            </div>
+
+            <div class="dialogue-box" onclick="advanceDialogue()">
+                <div id="char-name" class="character-name">系統</div>
+                <div id="char-text" class="dialogue-text">正在初始化地圖與歷史文獻...</div>
+                <div class="next-indicator">
+                    點擊繼續 <i class="fa-solid fa-caret-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="puzzle-screen" class="screen">
+            <div class="center-puzzle-panel">
+                <div class="puzzle-header">
+                    <div class="puzzle-title">
+                        <i class="fa-solid fa-key"></i> 維吉尼亞多表密碼解鎖
+                    </div>
+                    <div class="hp-container" id="hp-display">
+                        <i class="fa-solid fa-heart"></i> CHANCES: 3 / 3
+                    </div>
+                </div>
+
+                <div class="center-cipher-box">
+                    <div class="cipher-title">石壁刻印古密文 (CIPHERTEXT)</div>
+                    <div class="engraved-cipher">UPTUDH</div>
+                </div>
+
+                <div class="clue-box">
+                    <i class="fa-solid fa-scroll" style="color: var(--accent-gold); margin-right: 4px;"></i>
+                    「把那場災難之年的宣告（1835），化作高貴的異國之語（英文單字）。用它作為喚醒真相的鑰匙。」
+                </div>
+
+                <div class="explanation-box">
+                    <div class="explanation-title">
+                        <i class="fa-solid fa-circle-info"></i> 密碼推算註釋 (Vigenère Decryption)
+                    </div>
+                    <table class="explanation-table">
+                        <thead>
+                            <tr>
+                                <th>對齊位置</th>
+                                <th>第一碼</th>
+                                <th>第二碼</th>
+                                <th>後續推導...</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>石壁密文 (C)</td>
+                                <td><span class="formula-highlight">U</span> (20)</td>
+                                <td><span class="formula-highlight">P</span> (15)</td>
+                                <td style="color: var(--text-muted); font-style: italic;">T U D H</td>
+                            </tr>
+                            <tr>
+                                <td>災難密鑰 (K)</td>
+                                <td>- <span class="formula-highlight">C</span> (2)</td>
+                                <td>- <span class="formula-highlight">A</span> (0)</td>
+                                <td style="color: var(--text-muted); font-style: italic;">T A S T...</td>
+                            </tr>
+                            <tr>
+                                <td>解密還原 (P)</td>
+                                <td><span style="color: #10b981; font-weight: bold;">S</span> (18)</td>
+                                <td><span style="color: #10b981; font-weight: bold;">P</span> (15)</td>
+                                <td style="color: #10b981; font-weight: bold;">? ? ? ?</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="inputs-row">
+                    <div class="input-group">
+                        <label for="input-key"><i class="fa-solid fa-keyboard"></i> 輸入密鑰 (KEY)</label>
+                        <input type="text" id="input-key" placeholder="請輸入對應的英文單字" autocomplete="off">
+                    </div>
+                    <div class="input-group">
+                        <label for="input-answer"><i class="fa-solid fa-location-dot"></i> 還原後的最終目的地</label>
+                        <input type="text" id="input-answer" placeholder="例如: MACAU" autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="matrix-preview">
+                    <div class="matrix-row">A:0 B:1 C:2 D:3 E:4 F:5 G:6 H:7 I:8 J:9 K:10 L:11 M:12 N:13 O:14 P:15 Q:16 R:17 S:18 T:19 U:20 V:21 W:22 X:23 Y:24 Z:25</div>
+                </div>
+
+                <div id="puzzle-feedback" class="feedback-msg"></div>
+
+                <div class="action-container">
+                    <button class="btn-action btn-hint" onclick="getHint()">獲得線索提示</button>
+                    <button class="btn-action btn-submit" onclick="checkPuzzle()">提交解密結果</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="character-layer"><img id="character-img" src="grandma_tea.png" alt="阿婆"></div>
+    <script>
+        // --- 1. 手機自適應視窗縮放引擎 ---
+        const gameContainer = document.getElementById('game-container');
+        const baseWidth = 1120;
+        const baseHeight = 630;
 
-    <div id="dialogue-box" onclick="nextScript()">
-        <div id="speaker-name"></div>
-        <div id="dialogue-text"></div>
-        <div id="next-arrow">◇ 點擊聆聽</div>
-    </div>
-</div>
-
-<script>
-    // 🎯 新增：全畫面自動等比例縮放自適應函數
-    function autoScaleStage() {
-        const stage = document.getElementById('game-stage');
-        const baseWidth = 1280;
-        const baseHeight = 720;
-        
-        // 獲取當前手機或瀏覽器視窗的實際寬高
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        
-        // 計算寬高縮放比，選擇最小的比例以確保內容完全顯示在屏幕內（Contain 模式）
-        const scaleX = windowWidth / baseWidth;
-        const scaleY = windowHeight / baseHeight;
-        const scale = Math.min(scaleX, scaleY);
-        
-        // 套用 CSS Transform 縮放
-        stage.style.transform = `scale(${scale})`;
-    }
-
-    // 監聽初始化與屏幕旋轉/縮放事件
-    window.addEventListener('resize', autoScaleStage);
-    window.addEventListener('DOMContentLoaded', autoScaleStage);
-
-    // --- 遊戲邏輯與對話劇本不變 ---
-    const script = [
-        { name: "敘述", text: "一跨進門，滾燙的熱茶香氣便裹挾著淡淡的檀香撲面而來，將外頭的寒雨隔絕在另一個世界。" },
-        { name: "阿婆", text: "「來，孩子。先喝口熱茶，暖暖身子。」" },
-        { name: "我", text: "「謝謝您……（接過茶杯，環顧四周）這裡好安靜，感覺時間都變慢了。」" },
-        { name: "敘述", text: "櫃檯正中央，一束溫暖柔和的光線靜靜垂落。光影下，一個精緻的絲絨托盤裡正躺著一條流光溢彩的手鍊。" },
-        { name: "我", text: "「這條手鍊……好美。上面好像有些不一樣的細節？」" },
-        { name: "提示", text: "【請點擊手鍊上的 橘子、黃色珠子、紅色珠子 進行細緻觀察】" },
-        { name: "阿婆", text: "「呵呵，看來你觀察得很仔細。這條手鍊的每一部分，都有它在等待的緣分。」" },
-        { name: "我", text: "「1300°C 淬鍊的小桔子，溫潤的黃玉珠，還有沉穩的紅瑪瑙……」" },
-        { name: "阿婆", text: "「不差分毫。整條手鍊全長 18.5 厘米，不多不少，正好能完美貼合你此刻的手腕。這便是因緣。」" }
-    ];
-
-    let currentLine = 0;
-    let isTyping = false;
-    let puzzleMode = false;
-    let clickedParts = { tangerine: false, jade: false, redbeads: false };
-
-    function startAct2() {
-        document.getElementById('action-btn').style.display = 'none';
-        document.getElementById('dialogue-box').style.display = 'block';
-        
-        const img = document.getElementById('character-img');
-        img.style.opacity = '1';
-        img.style.transform = 'translateY(0)';
-        
-        showLine();
-    }
-
-    function showLine() {
-        if(currentLine >= script.length) return;
-        
-        if (currentLine === 3) {
-            const container = document.getElementById('item-container');
-            container.style.display = 'block';
-            setTimeout(() => document.getElementById('item-img').style.opacity = '1', 50);
-        }
-        
-        if (currentLine === 6 && !checkPuzzleSolved()) {
-            puzzleMode = true;
-            document.getElementById('next-arrow').style.display = 'none';
-            document.getElementById('character-img').style.opacity = '0';
-            return;
+        function resizeGame() {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            // 計算縮放比，取寬高比中最小者以防止破圖（Letterbox 模式）
+            const scaleX = windowWidth / baseWidth;
+            const scaleY = windowHeight / baseHeight;
+            const scale = Math.min(scaleX, scaleY);
+            
+            // 套用縮放
+            gameContainer.style.transform = `scale(${scale})`;
         }
 
-        const data = script[currentLine];
-        document.getElementById('speaker-name').innerText = data.name;
-        
-        const textContainer = document.getElementById('dialogue-text');
-        textContainer.innerText = "";
-        let i = 0;
-        isTyping = true;
+        // 初始化並監聽視窗尺寸改變
+        window.addEventListener('resize', resizeGame);
+        window.addEventListener('DOMContentLoaded', resizeGame);
 
-        let timer = setInterval(() => {
-            if (i < data.text.length) {
-                textContainer.innerText += data.text.charAt(i);
-                i++;
+
+        // --- 2. 劇本數據 ---
+        const script = [
+            { id: 0, name: "艾蓮娜", text: "（舉高火把，嗆得咳嗽）咳、咳……我的天，這裡至少有一百年沒人進來過了。我們真的找對地方了嗎？", bg: "bg-cave", nameClass: "elena" },
+            { id: 1, name: "主角", text: "傳說紅旗幫的海盜王鄭一，在接受朝廷招安前，將他掠奪大半生的秘寶藏在了伶仃洋的某個無名島礁。關於寶藏的線索則藏在了....。", bg: "bg-cave", nameClass: "mc" },
+            { id: 2, name: "艾蓮娜", text: "快看前面！那面粗糙的石壁上……好像刻著西洋人的英文字母！", bg: "bg-wall-glow", nameClass: "elena" },
+            { id: 3, name: "主角", text: "這不對勁。鄭一可是活躍在清代年間的中國海盜，為什麼會留下這種密碼？字跡很新，這顯然被他們的後人『更新』過。", bg: "bg-wall-glow", nameClass: "mc" },
+            { id: 4, name: "艾蓮娜", text: "提示上寫著：『把那場災難之年的宣告（1835），化作高貴的異國之語……』1835年到底發生了什麼災難？", bg: "bg-wall-glow", nameClass: "elena" },
+            { id: 5, name: "主角", text: "1835年……那一年在遠東發生最震撼的事，莫過於聖保羅大教堂的那場徹夜大火，將整座宏偉的建築燒得只剩下一面正門前壁。", bg: "bg-wall-glow", nameClass: "mc" },
+            { id: 6, name: "艾蓮娜", text: "啊！也就是現在澳門著名的——大三巴牌坊！那場大火在當時被形容為一場徹頭徹尾的『災難』！", bg: "bg-wall-glow", nameClass: "elena" },
+            { id: 7, name: "主角", text: "沒錯，『災難』的英文單字就是關鍵。艾蓮娜，幫我展開密碼對照表，我們必須解開這面牆上的多表密碼鎖！", bg: "bg-wall-glow", nameClass: "mc", triggerPuzzle: true },
+            
+            { id: 8, name: "艾蓮娜", text: "（石壁內傳出沉重的齒輪咬合聲）成功了！明文真的還原出了『S.PAULO』！也就是聖保羅大教堂！", bg: "bg-success", nameClass: "elena", showBadge: true },
+            { id: 9, name: "主角", text: "大火之後，教堂廢墟成了無人看管的荒地，魚龍混雜。海盜餘部把真正的祕寶轉移到了大三巴牌坊的地底！", bg: "bg-success", nameClass: "mc" },
+            { id: 10, name: "艾蓮娜", text: "太棒了！找到了下一個目的地指引。事不宜遲，我們的下一站：澳門，大三巴牌坊！", bg: "bg-success", nameClass: "elena" },
+            { id: 11, name: "系統", text: "【第一章：塵封的聖保羅之火】成功通關。感謝您的遊玩！", bg: "bg-start", nameClass: "system", isEnd: true }
+        ];
+
+        let currentIndex = 0;
+        let hintCount = 0;
+        let playerHP = 3; 
+
+        function changeScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function changeBG(bgClass) {
+            const bgLayer = document.getElementById('game-bg');
+            bgLayer.className = 'background-layer ' + bgClass;
+        }
+
+        function startGame() {
+            playerHP = 3; 
+            hintCount = 0;
+            document.getElementById('hp-display').innerHTML = `<i class="fa-solid fa-heart"></i> CHANCES: ${playerHP} / 3`;
+            document.getElementById('input-key').value = "";
+            document.getElementById('input-answer').value = "";
+            document.getElementById('puzzle-feedback').classList.remove('visible');
+            changeScreen('adventure-screen');
+            currentIndex = 0;
+            renderDialogue();
+        }
+
+        function renderDialogue() {
+            const node = script[currentIndex];
+            changeBG(node.bg);
+            
+            const nameEl = document.getElementById('char-name');
+            nameEl.textContent = node.name;
+            nameEl.className = 'character-name ' + node.nameClass;
+            
+            document.getElementById('char-text').textContent = node.text;
+
+            if (node.showBadge) {
+                document.getElementById('intel-badge').style.style.display = 'flex';
             } else {
-                clearInterval(timer);
-                isTyping = false;
+                document.getElementById('intel-badge').style.display = 'none';
             }
-        }, 40);
-    }
-
-    function nextScript() {
-        if (isTyping || puzzleMode) return; 
-        currentLine++;
-        if (currentLine < script.length) {
-            showLine();
-        } else {
-            alert("【第二幕 完】 手鍊在你的手腕上散發出微光，第三幕即將開啟...");
         }
-    }
 
-    const hotspotData = {
-        tangerine: "【核心吊墜：陶瓷小桔子】\n經受過 1300°C 高溫窯燒淬鍊的泥土，化為永不褪色的亮桔色。這是一份「萬事皆桔、生活回甘」的沉甸甸祝福。",
-        jade: "【核心配珠：溫潤黃玉珠】\n在深邃的紅瑪瑙中，這一顆金黃色的玉珠宛如破曉的晨光。阿婆說它象徵著守護內心永不熄滅的希望與溫暖。",
-        redbeads: "【主體材質：質地深邃的紅瑪瑙】\n一顆顆圓潤飽滿的紅瑪瑙環繞成圈，觸手溫涼。具有安神去躁、辟邪祈福的東方意蘊，為忙碌焦慮的都市生活帶來平靜。"
-    };
+        function advanceDialogue() {
+            const node = script[currentIndex];
+            
+            if (node.triggerPuzzle) {
+                changeScreen('puzzle-screen');
+                return;
+            }
 
-    function clickHotspot(part) {
-        if (!puzzleMode) return;
+            if (node.isEnd) {
+                changeScreen('title-screen');
+                return;
+            }
 
-        clickedParts[part] = true;
-        document.getElementById(`hotspot-${part}`).classList.add('clicked');
-
-        document.getElementById('speaker-name').innerText = "觀察細節";
-        const textContainer = document.getElementById('dialogue-text');
-        textContainer.innerText = hotspotData[part];
-
-        if (checkPuzzleSolved()) {
-            puzzleMode = false;
-            setTimeout(() => {
-                document.getElementById('character-img').style.opacity = '1';
-                document.getElementById('next-arrow').style.display = 'block';
-                currentLine = 6;
-                showLine();
-            }, 3000); 
+            currentIndex++;
+            if (currentIndex < script.length) {
+                renderDialogue();
+            }
         }
-    }
 
-    function checkPuzzleSolved() {
-        return clickedParts.tangerine && clickedParts.jade && clickedParts.redbeads;
-    }
-</script>
+        function checkPuzzle() {
+            const keyInput = document.getElementById('input-key').value.trim().toUpperCase();
+            const answerInput = document.getElementById('input-answer').value.trim().toUpperCase().replace(/[^A-Z]/g, ''); 
+            const feedback = document.getElementById('puzzle-feedback');
+            const container = document.getElementById('game-container');
+            const vignette = document.getElementById('game-vignette');
+
+            const correctKey = "CATASTROPHE";
+            const correctAnswer = "SPAULO";
+
+            if (keyInput === correctKey && answerInput === correctAnswer) {
+                // 收起虛擬鍵盤防止遮擋
+                document.activeElement.blur();
+
+                feedback.style.color = "#10b981";
+                feedback.textContent = "解密成功！石壁傳來沉重的震動聲，機關已開啟！";
+                feedback.classList.add('visible');
+                
+                setTimeout(() => {
+                    feedback.classList.remove('visible');
+                    changeScreen('adventure-screen');
+                    currentIndex = 8; 
+                    renderDialogue();
+                }, 1500);
+            } 
+            else {
+                playerHP--;
+                document.getElementById('hp-display').innerHTML = `<i class="fa-solid fa-heart"></i> CHANCES: ${playerHP} / 3`;
+                
+                container.classList.add('shake');
+                vignette.style.background = 'radial-gradient(circle, rgba(239, 68, 68, 0.4) 20%, rgba(0,0,0,0.95) 100%)';
+                
+                setTimeout(() => {
+                    container.classList.remove('shake');
+                    vignette.style.background = 'radial-gradient(circle, transparent 20%, rgba(0,0,0,0.85) 100%)';
+                }, 400);
+
+                feedback.style.color = "var(--accent-red)";
+                
+                if (playerHP <= 0) {
+                    feedback.textContent = "錯誤次數過多！石壁落石崩塌，調查失敗！強制退回起點。";
+                    feedback.classList.add('visible');
+                    setTimeout(() => {
+                        feedback.classList.remove('visible');
+                        changeScreen('title-screen'); 
+                        changeBG('bg-start');
+                    }, 2000);
+                } else {
+                    if (keyInput !== correctKey) {
+                        feedback.textContent = `密鑰(KEY)推算錯誤！機關反噬扣除生命。（剩餘次數: ${playerHP}）`;
+                    } else {
+                        feedback.textContent = `密鑰正確，但目的地(明文)推算有誤，請仔細比對減法對照表。（剩餘次數: ${playerHP}）`;
+                    }
+                    feedback.classList.add('visible');
+                }
+            }
+        }
+
+        function getHint() {
+            const feedback = document.getElementById('puzzle-feedback');
+            feedback.style.color = "#fbbf24";
+            hintCount++;
+
+            if (hintCount === 1) {
+                feedback.textContent = "線索 1：1835年大三巴牌坊（聖保羅教堂）徹夜大火。「災難」的英文是 CATASTROPHE。";
+            } else if (hintCount === 2) {
+                feedback.textContent = "線索 2：公式為 明文=(密文-密鑰)。密文第一個字母 U(20) - 密鑰 C(2) = 18，即明文首字為 S。";
+            } else {
+                feedback.textContent = "終極答案：密鑰請輸入 CATASTROPHE，最終目的地請輸入 SPAULO。";
+            }
+            feedback.classList.add('visible');
+        }
+    </script>
 </body>
 </html>
