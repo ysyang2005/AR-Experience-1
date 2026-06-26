@@ -77,7 +77,7 @@
 
         /* ==========================================================================
            1. 標題畫面
-           ========================================================================== */
+           ========================================================================= */
         #title-screen { justify-content: center; align-items: center; text-align: center; }
         .title-logo { margin-bottom: 50px; animation: fadeInDown 1s ease; }
         .title-logo h1 { font-size: 38px; color: var(--accent-gold); letter-spacing: 4px; margin-bottom: 12px; text-shadow: 0 0 15px var(--accent-glow); }
@@ -93,10 +93,10 @@
 
         /* ==========================================================================
            2. 劇情冒險畫面（流式上下結構）
-           ========================================================================== */
+           ========================================================================= */
         #adventure-screen { justify-content: flex-end; padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
         
-        /* 獨立出來的立繪顯示區域（放於對話框上方，防止圖片被裁切或壓扁） */
+        /* 修改後的立繪顯示區域：確保無框且支持漸變 */
         .sprite-area {
             flex: 1;
             width: 100%;
@@ -106,15 +106,26 @@
             pointer-events: none;
             z-index: 3;
             margin-bottom: -10px; /* 讓立繪與對話框自然交疊 */
+            overflow: hidden; /* 確保漸變效果在區域內 */
         }
         .character-sprite {
-            max-height: 70vh; /* 限制最大高度，確保在任何長寬比的手機上都不出界 */
+            max-height: 70vh; /* 限制最大高度 */
             max-width: 100%;
-            object-fit: contain; /* 核心：確保原圖比例完美，絕不扭曲變形 */
+            object-fit: contain; /* 核心：確保原圖比例完美 */
             filter: drop-shadow(0 10px 15px rgba(0,0,0,0.7));
-            display: none;
+            position: absolute; /* 絕對定位以便堆疊 */
+            bottom: 0; /* 底部對齊 */
+            left: 50%; /* 水平居中 */
+            transform: translateX(-50%); /* 水平居中修正 */
+            
+            /* 新增漸消漸現過渡效果 */
+            opacity: 0; /* 默認透明 */
+            transition: opacity 0.5s ease; /* 漸變時間為 0.5s */
         }
-        .character-sprite.active { display: block; animation: spriteFadeIn 0.4s ease; }
+        .character-sprite.active { 
+            opacity: 1; /* 顯示時不透明度為 1 */
+            z-index: 4; /* 確保當前立繪在上方 */
+        }
 
         /* 下置型對話框 */
         .dialogue-box {
@@ -135,7 +146,7 @@
 
         /* ==========================================================================
            3. 解密互動畫面（寬度百分比自適應，不壓扁）
-           ========================================================================== */
+           ========================================================================= */
         #puzzle-screen { justify-content: center; align-items: center; z-index: 20; background: rgba(2, 6, 23, 0.5); }
         
         /* 面板寬度改為 100% 流式，利用 max-width 兼容大屏，絕不擠壓變形 */
@@ -186,7 +197,8 @@
 
         /* 動畫特製 */
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spriteFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        /* 移除原本的 spriteFadeIn，改用 opacity transition */
+        /* @keyframes spriteFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } } */
         @keyframes pulse { 0%, 100% { opacity: 0.5; transform: translateX(0); } 50% { opacity: 1; transform: translateX(3px); } }
         @keyframes panelShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
     </style>
@@ -235,11 +247,11 @@
                 <div class="inputs-row">
                     <div class="input-group">
                         <label for="input-key"><i class="fa-solid fa-keyboard"></i> 輸入密鑰 (KEY)</label>
-                        <input type="text" id="input-key" placeholder="輸入對應英文單字" autocomplete="off">
+                        <input text="text" id="input-key" placeholder="輸入對應英文單字" autocomplete="off">
                     </div>
                     <div class="input-group">
                         <label for="input-answer"><i class="fa-solid fa-location-dot"></i> 還原後的最終目的地</label>
-                        <input type="text" id="input-answer" placeholder="例如: MACAU" autocomplete="off">
+                        <input text="text" id="input-answer" placeholder="例如: MACAU" autocomplete="off">
                     </div>
                 </div>
                 
@@ -350,10 +362,23 @@
             // 啟動打字機效果
             startTypewriter(node.text, 'char-text', 45);
 
-            // 立繪精準變換控制（完美不變形）
-            document.querySelectorAll('.character-sprite').forEach(img => img.classList.remove('active'));
-            if (node.sprite === 'elena') document.getElementById('sprite-elena').classList.add('active');
-            if (node.sprite === 'mc') document.getElementById('sprite-mc').classList.add('active');
+            // 立繪精準變換控制（修改為漸消漸現）
+            // 獲取所有立繪元素
+            const elenaSprite = document.getElementById('sprite-elena');
+            const mcSprite = document.getElementById('sprite-mc');
+
+            // 設置當前應顯示的立繪，其餘淡出
+            if (node.sprite === 'elena') {
+                elenaSprite.classList.add('active');
+                mcSprite.classList.remove('active');
+            } else if (node.sprite === 'mc') {
+                elenaSprite.classList.remove('active');
+                mcSprite.classList.add('active');
+            } else {
+                // 如果是 none 或其它，全部淡出
+                elenaSprite.classList.remove('active');
+                mcSprite.classList.remove('active');
+            }
         }
 
         function advanceDialogue() {
