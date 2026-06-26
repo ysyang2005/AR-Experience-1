@@ -8,11 +8,10 @@
         :root {
             --theme-gold: #d4af37;
             --theme-orange: #ff7b00;
-            --glass-bg: rgba(15, 15, 25, 0.85); /* 手機端略微加深背景，提升文字可讀性 */
+            --glass-bg: rgba(15, 15, 25, 0.85);
             --glass-border: rgba(212, 175, 55, 0.3);
         }
 
-        /* 移除手機端長按彈出菜單與藍色高光，全面優化觸控體驗 */
         * { 
             box-sizing: border-box; 
             margin: 0; 
@@ -31,7 +30,6 @@
             color: #f5f5f7; 
         }
         
-        /* 遊戲主舞台：採用標準 16:9 安全區域控製 */
         #game-stage { 
             position: relative; 
             width: 100%; 
@@ -42,7 +40,7 @@
             overflow: hidden;
         }
         
-        /* 溫暖店內背景：手機端用 cover 確保完全鋪滿屏幕，不留黑邊 */
+        /* 背景 */
         #background { 
             position: absolute; 
             width: 100%; 
@@ -63,7 +61,7 @@
             background: radial-gradient(circle at 50% 50%, rgba(255,165,0,0.15), rgba(0,0,0,0.4)); 
         }
         
-        /* 響應式對話框：自適應寬度，在手機端兩側留出安全邊距 */
+        /* 對話框 */
         #dialogue-box { 
             position: absolute; 
             bottom: 5%; 
@@ -110,16 +108,17 @@
             animation: float 2s infinite ease-in-out; 
         }
         
-        /* 阿婆立繪：手機端自適應高度與位置，避免遮擋核心手鍊 */
+        /* 💻 【電腦端佈局】阿婆在左，手鍊在右 */
         #character-layer { 
             position: absolute; 
             bottom: 22%; 
-            left: 25%; 
+            left: 35%; 
             transform: translateX(-50%); 
-            height: 50%; 
+            height: 52%; 
             max-height: 500px; 
             z-index: 4; 
             pointer-events: none; 
+            transition: all 0.6s ease-in-out;
         }
         #character-img { 
             height: 100%; 
@@ -128,17 +127,17 @@
             transition: opacity 0.8s ease, transform 0.8s ease; 
         }
         
-        /* 核心手鍊圖容器：改用彈性適配，確保在手機與電腦端完全等比例縮放 */
         #item-container { 
             position: absolute; 
             bottom: 25%; 
-            left: 50%; 
+            left: 65%; 
             transform: translateX(-50%); 
-            width: 85vw;          /* 手機端優先使用寬度百分比適配 */
-            max-width: 420px;     /* 電腦端最大寬度限制 */
+            width: 40vw;
+            max-width: 420px;
             aspect-ratio: 16 / 9; 
             z-index: 4; 
             display: none; 
+            transition: all 0.6s ease-in-out;
         }
         
         #item-img { 
@@ -150,7 +149,7 @@
             object-fit: contain; 
         }
 
-        /* 點擊熱點：保持完全透明，完美适配移動端觸摸 */
+        /* 隱形點擊熱點 */
         .hotspot { 
             position: absolute; 
             border-radius: 50%; 
@@ -158,7 +157,7 @@
             background: rgba(0, 0, 0, 0); 
             border: 1px solid transparent;
             outline: none;
-            -webkit-tap-highlight-color: rgba(0, 0, 0, 0); /* 彻底移除手機端點擊藍色高光 */
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
         }
         .hotspot:hover, .hotspot.clicked { 
             background: rgba(0, 0, 0, 0); 
@@ -166,15 +165,11 @@
             box-shadow: none; 
         }
 
-        /* 🎯 基於 16:9 容器比例的精確相對坐標 */
-        /* 桔子部分 */
+        /* 熱點相對坐標比例 */
         #hotspot-tangerine { top: 66%; left: 32%; width: 13%; height: 22%; }
-        /* 黃色珠子部分 */
         #hotspot-jade { top: 63%; left: 54%; width: 11%; height: 13%; border-radius: 40%; }
-        /* 紅色珠子部分 */
         #hotspot-redbeads { top: 36%; left: 24.5%; width: 10%; height: 16%; }
 
-        /* 開始按鈕適配 */
         #action-btn { 
             position: absolute; 
             bottom: 30%; 
@@ -194,20 +189,30 @@
 
         @keyframes float { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-4px); opacity: 1; } }
 
-        /* 📱 針對手機豎屏（常見場景）的佈局優化 */
+        /* 📱 【手機端（豎屏）完美適配樣式】 */
         @media (max-width: 768px) {
+            /* 1. 阿婆位置往上挪移並縮小，置於畫面上半部分，騰出空間 */
             #character-layer {
-                left: 50%;     /* 手機端將阿婆移到正中，避免與右邊的手鍊重疊 */
-                bottom: 32%;
-                height: 42%;
+                left: 50%;     
+                bottom: 48%;   
+                height: 38%;   
             }
+            
+            /* 2. 手鍊在手機端水平居中，置於阿婆下方、對話框上方，完美錯開 */
             #item-container {
-                bottom: 30%;   /* 手鍊在解謎模式下會居中放大，更方便手機手指點擊 */
-                width: 90vw;
+                left: 50%;
+                bottom: 25%;   
+                width: 85vw;   /* 寬度擴大，方便手機觸摸 */
             }
+            
             #dialogue-box {
-                height: 140px; /* 稍微壓縮手機端對話框高度，給畫面上方留出空間 */
+                height: 135px; 
                 padding: 15px 20px;
+                bottom: 3%;
+            }
+
+            #action-btn {
+                bottom: 25%;
             }
         }
     </style>
@@ -246,7 +251,7 @@
         { name: "敘述", text: "櫃檯正中央，一束溫暖柔和的光線靜靜垂落。光影下，一個精緻的絲絨托盤裡正躺著一條流光溢彩的手鍊。" },
         { name: "我", text: "「這條手鍊……好美。上面好像有些不一樣的細節？」" },
         { name: "提示", text: "【請點擊手鍊上的 橘子、黃色珠子、紅色珠子 進行細緻觀察】" },
-        // 解謎攔截點：阿婆淡出隱藏
+        // 解謎攔截點
         { name: "阿婆", text: "「呵呵，看來你觀察得很仔細。這條手鍊的每一部分，都有它在等待的緣分。」" },
         { name: "我", text: "「1300°C 淬鍊的小桔子，溫潤的黃玉珠，還有沉穩的紅瑪瑙……」" },
         { name: "阿婆", text: "「不差分毫。整條手鍊全長 18.5 厘米，不多不少，正好能完美貼合你此刻的手腕。這便是因緣。」" }
@@ -280,7 +285,7 @@
         if (currentLine === 6 && !checkPuzzleSolved()) {
             puzzleMode = true;
             document.getElementById('next-arrow').style.display = 'none';
-            // 隱藏阿婆，突出手鍊以便手機端操作
+            // 進入互動解謎時，將阿婆完全淡出，騰出全部視野給玩家點擊
             document.getElementById('character-img').style.opacity = '0';
             return;
         }
@@ -333,7 +338,7 @@
         if (checkPuzzleSolved()) {
             puzzleMode = false;
             setTimeout(() => {
-                // 阿婆重新出現在原位
+                // 解謎完成後，阿婆重新溫柔淡入回來
                 document.getElementById('character-img').style.opacity = '1';
                 document.getElementById('next-arrow').style.display = 'block';
                 currentLine = 6;
