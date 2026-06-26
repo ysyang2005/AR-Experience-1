@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>海盜王的遺產：塵封的大三巴 (豎屏全屏版)</title>
+    <title>海盜王的遺產：塵封的大三巴 (直屏無損全屏版)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -12,8 +12,8 @@
     <style>
         :root {
             --bg-dark: #0b0f19;
-            --panel-bg: rgba(15, 23, 42, 0.9); 
-            --panel-border: rgba(251, 191, 36, 0.3); 
+            --panel-bg: rgba(15, 23, 42, 0.93); 
+            --panel-border: rgba(251, 191, 36, 0.35); 
             --accent-gold: #fbbf24;
             --accent-glow: rgba(251, 191, 36, 0.3);
             --text-main: #f1f5f9;
@@ -31,20 +31,16 @@
             -webkit-touch-callout: none;
         }
 
-        /* 讓 HTML 和 Body 真正 100% 填滿手機螢幕 */
         body, html {
             background-color: #020617;
             color: var(--text-main);
             font-family: 'Noto Serif TC', serif;
-            width: 100%;
-            height: 100%;
+            width: 100%; height: 100%;
             overflow: hidden;
             position: fixed; /* 禁用 iOS 橡皮筋回彈 */
         }
 
-        /* ==========================================================================
-           新容器設計：直接 100% 滿版，全面屏適配
-           ========================================================================== */
+        /* 遊戲主容器：直接物理滿版，防瀏海遮擋 */
         #game-container {
             width: 100%;
             height: 100%;
@@ -53,10 +49,10 @@
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
-        /* 震動處罰動畫 */
-        .shake { animation: containerShake 0.4s linear; }
+        /* 處罰震動效果（套用在核心面板上，防止整個螢幕晃動導致瀏覽器露底） */
+        .shake { animation: panelShake 0.4s linear; }
 
-        /* 背景層：利用 cover 達成「無黑邊全屏自動裁切」 */
+        /* 背景層：使用 cover 確保「不扭曲、不變形、完全填滿」 */
         .background-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-size: cover; 
@@ -67,89 +63,106 @@
 
         .vignette {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.9) 100%);
+            background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.95) 100%);
             pointer-events: none; z-index: 2;
         }
 
-        /* 畫面基底 */
+        /* 響應式場景層 */
         .screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 5; display: none; flex-direction: column;
-            padding: 20px; /* 手機端邊距 */
+            padding: 20px;
         }
         .screen.active { display: flex; }
 
         /* ==========================================================================
-           1. 標題畫面 (豎屏優化)
+           1. 標題畫面
            ========================================================================== */
         #title-screen { justify-content: center; align-items: center; text-align: center; }
-        .title-logo { margin-bottom: 60px; animation: fadeInDown 1.2s ease; }
-        .title-logo h1 { font-size: 42px; color: var(--accent-gold); letter-spacing: 4px; margin-bottom: 16px; text-shadow: 0 0 15px var(--accent-glow); }
-        .title-logo p { font-size: 16px; color: var(--text-muted); letter-spacing: 3px; }
+        .title-logo { margin-bottom: 50px; animation: fadeInDown 1s ease; }
+        .title-logo h1 { font-size: 38px; color: var(--accent-gold); letter-spacing: 4px; margin-bottom: 12px; text-shadow: 0 0 15px var(--accent-glow); }
+        .title-logo p { font-size: 15px; color: var(--text-muted); letter-spacing: 2px; }
         
         .menu-btn {
-            background: var(--panel-bg); border: 1px solid var(--panel-border);
-            color: var(--text-main); padding: 16px 60px; font-size: 18px; border-radius: 30px;
-            cursor: pointer; transition: all 0.3s ease; -webkit-tap-highlight-color: transparent;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            background: var(--panel-bg); border: 2px solid var(--panel-border);
+            color: var(--text-main); padding: 16px 50px; font-size: 17px; border-radius: 30px;
+            cursor: pointer; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
         }
+        .menu-btn:active { transform: scale(0.95); border-color: var(--accent-gold); }
 
         /* ==========================================================================
-           2. 劇情畫面 (對話框移到下方，方便大拇指點擊)
+           2. 劇情冒險畫面（流式上下結構）
            ========================================================================== */
-        #adventure-screen { justify-content: flex-end; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+        #adventure-screen { justify-content: flex-end; padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
         
-        .dialogue-box {
-            background: var(--panel-bg); border: 2px solid rgba(51, 65, 85, 0.8);
-            border-radius: 16px; padding: 20px; width: 100%; min-height: 150px;
-            position: relative; backdrop-filter: blur(10px); cursor: pointer; z-index: 10;
-            -webkit-tap-highlight-color: transparent;
-            box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
+        /* 獨立出來的立繪顯示區域（放於對話框上方，防止圖片被裁切或壓扁） */
+        .sprite-area {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 3;
+            margin-bottom: -10px; /* 讓立繪與對話框自然交疊 */
         }
-        .character-name { font-size: 18px; font-weight: bold; margin-bottom: 8px; display: inline-block; border-bottom: 2px solid transparent; }
+        .character-sprite {
+            max-height: 70vh; /* 限制最大高度，確保在任何長寬比的手機上都不出界 */
+            max-width: 100%;
+            object-fit: contain; /* 核心：確保原圖比例完美，絕不扭曲變形 */
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.7));
+            display: none;
+        }
+        .character-sprite.active { display: block; animation: spriteFadeIn 0.4s ease; }
+
+        /* 下置型對話框 */
+        .dialogue-box {
+            background: var(--panel-bg); border: 2px solid rgba(51, 65, 85, 0.85);
+            border-radius: 16px; padding: 20px; width: 100%; min-height: 145px;
+            position: relative; backdrop-filter: blur(12px); cursor: pointer; z-index: 10;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.6);
+        }
+        .character-name { font-size: 18px; font-weight: bold; margin-bottom: 6px; display: inline-block; border-bottom: 2px solid transparent; }
         .character-name.elena { color: var(--character-elena); border-color: var(--character-elena); }
         .character-name.mc { color: var(--character-mc); border-color: var(--character-mc); }
         .character-name.system { color: var(--accent-gold); border-color: var(--accent-gold); }
-        .dialogue-text { font-size: 15px; line-height: 1.6; color: #e2e8f0; }
+        
+        /* 打字機文本容器 */
+        .dialogue-text { font-size: 15px; line-height: 1.6; color: #e2e8f0; min-height: 48px; }
         .next-indicator { position: absolute; bottom: 12px; right: 16px; color: var(--accent-gold); animation: pulse 1.5s infinite; font-size: 12px; }
 
         /* ==========================================================================
-           3. 解密互動面板 (關鍵重構：由橫變豎)
+           3. 解密互動畫面（寬度百分比自適應，不壓扁）
            ========================================================================== */
-        #puzzle-screen { 
-            justify-content: center; 
-            align-items: center; 
-            z-index: 20; 
-            background: rgba(2, 6, 23, 0.4); 
-        }
+        #puzzle-screen { justify-content: center; align-items: center; z-index: 20; background: rgba(2, 6, 23, 0.5); }
         
-        /* 面板寬度改為響應式，適配各種手機寬度 */
+        /* 面板寬度改為 100% 流式，利用 max-width 兼容大屏，絕不擠壓變形 */
         .center-puzzle-panel {
             width: 100%;
-            max-width: 360px; /* 完美契合主流手機寬度 */
+            max-width: 350px; 
             background: var(--panel-bg); border: 2px solid var(--panel-border);
             border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); animation: fadeInDown 0.5s ease;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); animation: fadeInDown 0.4s ease;
         }
         
         .puzzle-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(251, 191, 36, 0.2); padding-bottom: 8px; }
-        .puzzle-title { font-size: 16px; color: var(--accent-gold); display: flex; align-items: center; gap: 6px; }
+        .puzzle-title { font-size: 15px; color: var(--accent-gold); display: flex; align-items: center; gap: 6px; }
         .hp-container { font-family: 'Share Tech Mono', monospace; font-size: 13px; color: var(--accent-red); background: rgba(239, 68, 68, 0.12); padding: 3px 10px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.25); }
         
-        /* 密文箱大放大，突出視覺重點 */
-        .center-cipher-box { text-align: center; background: rgba(2, 6, 23, 0.8); padding: 12px; border-radius: 10px; border: 1px dashed rgba(251, 191, 36, 0.25); }
+        .center-cipher-box { text-align: center; background: rgba(2, 6, 23, 0.85); padding: 12px; border-radius: 10px; border: 1px dashed rgba(251, 191, 36, 0.25); }
         .cipher-title { font-size: 10px; color: var(--text-muted); letter-spacing: 2px; margin-bottom: 2px; }
-        .engraved-cipher { font-family: 'Share Tech Mono', monospace; font-size: 36px; letter-spacing: 6px; font-weight: 700; color: #fef08a; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
+        .engraved-cipher { font-family: 'Share Tech Mono', monospace; font-size: 34px; letter-spacing: 6px; font-weight: 700; color: #fef08a; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
         
-        .clue-box { background: rgba(2, 6, 23, 0.4); border-left: 3px solid var(--accent-gold); padding: 8px 12px; font-size: 12.5px; color: #cbd5e1; line-height: 1.4; }
+        .clue-box { background: rgba(2, 6, 23, 0.4); border-left: 3px solid var(--accent-gold); padding: 8px 12px; font-size: 12.5px; color: #cbd5e1; line-height: 1.45; }
         
-        /* 橫排輸入框在豎屏下改成「上下雙層堆疊」 */
         .inputs-row { display: flex; flex-direction: column; gap: 10px; }
         .input-group { display: flex; flex-direction: column; gap: 4px; }
         .input-group label { font-size: 11.5px; color: var(--text-muted); }
         .input-group input { 
             background: #020617; border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 8px; 
-            padding: 10px 12px; color: var(--text-main); font-family: 'Share Tech Mono', monospace; 
+            padding: 11px 12px; color: var(--text-main); font-family: 'Share Tech Mono', monospace; 
             font-size: 14px; text-transform: uppercase; -webkit-appearance: none; 
         }
         .input-group input:focus { outline: none; border-color: var(--accent-gold); box-shadow: 0 0 8px var(--accent-glow); }
@@ -165,16 +178,17 @@
         .feedback-msg { font-size: 11.5px; color: var(--accent-red); min-height: 16px; opacity: 0; text-align: center; line-height: 1.3; }
         .feedback-msg.visible { opacity: 1; }
 
-        /* 背景圖片 */
+        /* 背景圖片樣式 */
         .bg-start { background-image: url('bg_start.jpg'); }
         .bg-cave { background-image: url('bg_cave.jpg'); }
         .bg-wall-glow { background-image: url('bg_wall_glow.jpg'); }
         .bg-success { background-image: url('bg_success.jpg'); }
 
-        /* 動態效果 */
+        /* 動畫特製 */
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spriteFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0%, 100% { opacity: 0.5; transform: translateX(0); } 50% { opacity: 1; transform: translateX(3px); } }
-        @keyframes containerShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+        @keyframes panelShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
     </style>
 </head>
 <body>
@@ -192,9 +206,13 @@
         </div>
 
         <div id="adventure-screen" class="screen">
-            <div class="dialogue-box" onclick="advanceDialogue()">
+            <div class="sprite-area">
+                <img id="sprite-elena" class="character-sprite" src="char_elena.png" alt="艾蓮娜">
+                <img id="sprite-mc" class="character-sprite" src="char_mc.png" alt="主角">
+            </div>
+            <div class="dialogue-box" onclick="handleDialogueClick()">
                 <div id="char-name" class="character-name">系統</div>
-                <div id="char-text" class="dialogue-text">正在初始化地圖與歷史文獻...</div>
+                <div id="char-text" class="dialogue-text"></div>
                 <div class="next-indicator">點擊繼續 <i class="fa-solid fa-caret-right"></i></div>
             </div>
         </div>
@@ -211,7 +229,7 @@
                 </div>
                 <div class="clue-box">
                     <i class="fa-solid fa-scroll" style="color: var(--accent-gold); margin-right: 4px;"></i>
-                    「把那場災難之年的宣告（1835），化作英文字單字。用它作為喚醒真相的鑰匙。」
+                    「把那場災難之年的宣告（1835），化作英文字單字。用它作為鑰匙。」
                 </div>
                 
                 <div class="inputs-row">
@@ -240,33 +258,66 @@
     </div>
 
     <script>
-        // --- 豎屏下的輕量錯誤反饋控制 ---
-        function triggerShake() {
-            const panel = document.getElementById('puzzle-panel');
-            panel.classList.add('shake');
-            setTimeout(() => panel.classList.remove('shake'), 400);
-        }
-
-        // --- 劇情與解密邏輯機制 ---
+        // --- 1. 劇本數據配置 (新增立繪控制欄位) ---
         const script = [
-            { id: 0, name: "艾蓮娜", text: "（舉高火把，嗆得咳嗽）咳、咳……我的天，這裡至少有一百年沒人進來過了。我們真的找對地方了嗎？", bg: "bg-cave", nameClass: "elena" },
-            { id: 1, name: "主角", text: "傳說紅旗幫的海盜王鄭一，在接受朝廷招安前，將他大半生的秘寶藏在了伶仃洋。關於寶藏的線索則藏在了....。", bg: "bg-cave", nameClass: "mc" },
-            { id: 2, name: "艾蓮娜", text: "快看前面！那面粗糙的石壁上……好像刻著西洋人的英文字母！", bg: "bg-wall-glow", nameClass: "elena" },
-            { id: 3, name: "主角", text: "這不對勁。鄭一可是活躍在清代年間的中國海盜，為什麼會留下這種密碼？字跡很新，這顯然被他們的後人『更新』過。", bg: "bg-wall-glow", nameClass: "mc" },
-            { id: 4, name: "艾蓮娜", text: "提示上寫著：『把那場災難之年的宣告（1835），化作高貴的異國之語……』1835年到底發生了什麼災難？", bg: "bg-wall-glow", nameClass: "elena" },
-            { id: 5, name: "主角", text: "1835年……那一年在遠東發生最震撼的事，莫過於聖保羅大教堂的那場徹夜大火，將整座宏偉的建築燒得只剩下一面正門前壁。", bg: "bg-wall-glow", nameClass: "mc" },
-            { id: 6, name: "艾蓮娜", text: "啊！也就是現在澳門著名的——大三巴牌坊！那場大火在當時被形容為一場徹頭徹尾的『災難』！", bg: "bg-wall-glow", nameClass: "elena" },
-            { id: 7, name: "主角", text: "沒錯，『災難』的英文單字就是關鍵。艾蓮娜，幫我展開密碼對照表，我們必須解開這面牆上的多表密碼鎖！", bg: "bg-wall-glow", nameClass: "mc", triggerPuzzle: true },
-            { id: 8, name: "艾蓮娜", text: "（石壁內傳出沉重的齒輪咬合聲）成功了！明文真的還原出了『S.PAULO』！也就是聖保羅大教堂！", bg: "bg-success", nameClass: "elena" },
-            { id: 9, name: "主角", text: "大火之後，教堂廢墟成了無人看管的荒地，魚龍混雜。海盜餘部把真正的祕寶轉移到了大三巴牌坊的地底！", bg: "bg-success", nameClass: "mc" },
-            { id: 10, name: "艾蓮娜", text: "太棒了！找到了下一個目的地指引。事不宜遲，我們的下一站：澳門，大三巴牌坊！", bg: "bg-success", nameClass: "elena" },
-            { id: 11, name: "系統", text: "【第一章：塵封的聖保羅之火】成功通關。感謝您的遊玩！", bg: "bg-start", nameClass: "system", isEnd: true }
+            { id: 0, name: "艾蓮娜", text: "（舉高火把，嗆得咳嗽）咳、咳……我的天，這裡至少有一百年沒人進來過了。我們真的找對地方了嗎？", bg: "bg-cave", nameClass: "elena", sprite: "elena" },
+            { id: 1, name: "主角", text: "傳說紅旗幫的海盜王鄭一，在接受朝廷招安前，將他大半生的秘寶藏在了伶仃洋。關於寶藏的線索則藏在了....。", bg: "bg-cave", nameClass: "mc", sprite: "mc" },
+            { id: 2, name: "艾蓮娜", text: "快看前面！那面粗糙的石壁上……好像刻著西洋人的英文字母！", bg: "bg-wall-glow", nameClass: "elena", sprite: "elena" },
+            { id: 3, name: "主角", text: "這不對勁。鄭一可是活躍在清代年間的中國海盜，為什麼會留下這種密碼？字跡很新，這顯然被他們的後人『更新』過。", bg: "bg-wall-glow", nameClass: "mc", sprite: "mc" },
+            { id: 4, name: "艾蓮娜", text: "提示上寫著：『把那場災難之年的宣告（1835），化作高貴的異國之語……』1835年到底發生了什麼災難？", bg: "bg-wall-glow", nameClass: "elena", sprite: "elena" },
+            { id: 5, name: "主角", text: "1835年……那一年在遠東發生最震撼的事，莫過於聖保羅大教堂的那場徹夜大火，將整座宏偉的建築燒得只剩下一面正門前壁。", bg: "bg-wall-glow", nameClass: "mc", sprite: "mc" },
+            { id: 6, name: "艾蓮娜", text: "啊！也就是現在澳門著名的——大三巴牌坊！那場大火在當時被形容為一場徹頭徹尾的『災難』！", bg: "bg-wall-glow", nameClass: "elena", sprite: "elena" },
+            { id: 7, name: "主角", text: "沒錯，『災難』的英文單字就是關鍵。艾蓮娜，幫我展開密碼對照表，我們必須解開這面牆上的多表密碼鎖！", bg: "bg-wall-glow", nameClass: "mc", sprite: "mc", triggerPuzzle: true },
+            { id: 8, name: "艾蓮娜", text: "（石壁內傳出沉重的齒輪咬合聲）成功了！明文真的還原出了『S.PAULO』！也就是聖保羅大教堂！", bg: "bg-success", nameClass: "elena", sprite: "elena" },
+            { id: 9, name: "主角", text: "大火之後，教堂廢墟成了無人看管的荒地，魚龍混雜。海盜餘部把真正的祕寶轉移到了大三巴牌坊的地底！", bg: "bg-success", nameClass: "mc", sprite: "mc" },
+            { id: 10, name: "艾蓮娜", text: "太棒了！找到了下一個目的地指引。事不宜遲，我們的下一站：澳門，大三巴牌坊！", bg: "bg-success", nameClass: "elena", sprite: "elena" },
+            { id: 11, name: "系統", text: "【第一章：塵封的聖保羅之火】成功通關。感謝您的遊玩！", bg: "bg-start", nameClass: "system", sprite: "none", isEnd: true }
         ];
 
         let currentIndex = 0;
         let hintCount = 0;
         let playerHP = 3; 
 
+        // 打字機特效核心變數
+        let typewriterTimer = null;
+        let isTyping = false;
+        let currentFullText = "";
+
+        // --- 2. 打字機核心效果引擎（流暢換行，絕不丟失） ---
+        function startTypewriter(text, elementId, speed = 40) {
+            clearInterval(typewriterTimer);
+            isTyping = true;
+            currentFullText = text;
+            const element = document.getElementById(elementId);
+            element.textContent = ""; 
+            
+            let charIndex = 0;
+            typewriterTimer = setInterval(() => {
+                if (charIndex < text.length) {
+                    element.textContent += text.charAt(charIndex);
+                    charIndex++;
+                } else {
+                    completeTypewriter();
+                }
+            }, speed);
+        }
+
+        function completeTypewriter() {
+            clearInterval(typewriterTimer);
+            document.getElementById('char-text').textContent = currentFullText;
+            isTyping = false;
+        }
+
+        // 處理對話框點擊：如果在打字中則「瞬間跳完」，否則進入下一句
+        function handleDialogueClick() {
+            if (isTyping) {
+                completeTypewriter();
+            } else {
+                advanceDialogue();
+            }
+        }
+
+        // --- 3. 遊戲流程控制 ---
         function changeScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
@@ -290,10 +341,19 @@
         function renderDialogue() {
             const node = script[currentIndex];
             changeBG(node.bg);
+            
+            // 姓名與樣式
             const nameEl = document.getElementById('char-name');
             nameEl.textContent = node.name;
             nameEl.className = 'character-name ' + node.nameClass;
-            document.getElementById('char-text').textContent = node.text;
+            
+            // 啟動打字機效果
+            startTypewriter(node.text, 'char-text', 45);
+
+            // 立繪精準變換控制（完美不變形）
+            document.querySelectorAll('.character-sprite').forEach(img => img.classList.remove('active'));
+            if (node.sprite === 'elena') document.getElementById('sprite-elena').classList.add('active');
+            if (node.sprite === 'mc') document.getElementById('sprite-mc').classList.add('active');
         }
 
         function advanceDialogue() {
@@ -304,6 +364,7 @@
             if (currentIndex < script.length) { renderDialogue(); }
         }
 
+        // --- 4. 解密判定與處罰特效 ---
         function checkPuzzle() {
             const keyInput = document.getElementById('input-key').value.trim().toUpperCase();
             const answerInput = document.getElementById('input-answer').value.trim().toUpperCase().replace(/[^A-Z]/g, ''); 
@@ -314,7 +375,7 @@
             const correctAnswer = "SPAULO";
 
             if (keyInput === correctKey && answerInput === correctAnswer) {
-                document.activeElement.blur(); // 隱藏手機鍵盤
+                document.activeElement.blur(); // 隱藏手機軟鍵盤
                 feedback.style.color = "#10b981";
                 feedback.textContent = "解密成功！機關已開啟！";
                 feedback.classList.add('visible');
@@ -329,11 +390,15 @@
             else {
                 playerHP--;
                 document.getElementById('hp-display').innerHTML = `<i class="fa-solid fa-heart"></i> 剩餘: ${playerHP}`;
-                triggerShake();
                 
-                vignette.style.background = 'radial-gradient(circle, rgba(239, 68, 68, 0.3) 30%, rgba(0,0,0,0.95) 100%)';
+                // 處罰效果：核心面板震動 + 邊緣血光微閃（絕不暴露網頁底色）
+                const panel = document.getElementById('puzzle-panel');
+                panel.classList.add('shake');
+                vignette.style.background = 'radial-gradient(circle, rgba(239, 68, 68, 0.35) 30%, rgba(0,0,0,0.95) 100%)';
+                
                 setTimeout(() => {
-                    vignette.style.background = 'radial-gradient(circle, transparent 30%, rgba(0,0,0,0.9) 100%)';
+                    panel.classList.remove('shake');
+                    vignette.style.background = 'radial-gradient(circle, transparent 30%, rgba(0,0,0,0.95) 100%)';
                 }, 400);
 
                 feedback.style.color = "var(--accent-red)";
@@ -346,7 +411,7 @@
                         changeScreen('title-screen'); changeBG('bg-start');
                     }, 2000);
                 } else {
-                    feedback.textContent = keyInput !== correctKey ? "密鑰(KEY)錯誤！" : "密鑰正確，但目的地有誤。";
+                    feedback.textContent = keyInput !== correctKey ? "密鑰(KEY)推算錯誤！" : "密鑰正確，但目的地有誤。";
                     feedback.classList.add('visible');
                 }
             }
