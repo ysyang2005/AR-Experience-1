@@ -1,177 +1,350 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindAR Video Experience</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>萬事皆桔 - 第二幕：手鍊的秘密</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000000; }
-        #start-overlay {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); color: white;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            z-index: 9999;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        :root {
+            --theme-gold: #d4af37;
+            --theme-orange: #ff7b00;
+            --glass-bg: rgba(15, 15, 25, 0.85); /* 手機端略微加深背景，提升文字可讀性 */
+            --glass-border: rgba(212, 175, 55, 0.3);
         }
-        #start-btn {
-            padding: 14px 28px; font-size: 18px;
-            background: #007bff; color: white;
-            border: none; border-radius: 8px;
-            cursor: pointer; font-weight: bold;
+
+        /* 移除手機端長按彈出菜單與藍色高光，全面優化觸控體驗 */
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            user-select: none; 
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
-        /* 调试信息浮层 */
-        #debug-log {
-            position: fixed; bottom: 10px; left: 10px; right: 10px;
-            background: rgba(0,0,0,0.7); color: #0f0;
-            font-size: 12px; font-family: monospace;
-            padding: 8px; border-radius: 6px;
-            z-index: 8888; max-height: 120px;
-            overflow-y: auto; pointer-events: none;
+        
+        body, html { 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            font-family: 'Noto Serif TC', 'PingFang HK', serif; 
+            background: #05060a; 
+            color: #f5f5f7; 
         }
-        .hidden { display: none !important; }
+        
+        /* 遊戲主舞台：採用標準 16:9 安全區域控製 */
+        #game-stage { 
+            position: relative; 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            overflow: hidden;
+        }
+        
+        /* 溫暖店內背景：手機端用 cover 確保完全鋪滿屏幕，不留黑邊 */
+        #background { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+            background-image: url('bg_interior.jpg'); 
+            background-size: cover; 
+            background-position: center; 
+            filter: brightness(0.9); 
+            transition: all 1.2s ease; 
+            z-index: 1; 
+        }
+        #ambient-glow { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 2; 
+            pointer-events: none; 
+            background: radial-gradient(circle at 50% 50%, rgba(255,165,0,0.15), rgba(0,0,0,0.4)); 
+        }
+        
+        /* 響應式對話框：自適應寬度，在手機端兩側留出安全邊距 */
+        #dialogue-box { 
+            position: absolute; 
+            bottom: 5%; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 90%; 
+            max-width: 900px; 
+            height: 150px; 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            border: 1px solid var(--glass-border); 
+            border-radius: 12px; 
+            z-index: 5; 
+            padding: 20px 25px; 
+            cursor: pointer; 
+            display: none; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6); 
+        }
+        
+        #speaker-name { 
+            font-size: 1.15rem; 
+            font-weight: 600; 
+            color: var(--theme-gold); 
+            margin-bottom: 8px; 
+            letter-spacing: 2px; 
+        }
+        
+        #dialogue-text { 
+            font-size: 0.98rem; 
+            line-height: 1.7; 
+            color: #f0f0f5; 
+            letter-spacing: 1px; 
+            font-weight: 300; 
+            word-wrap: break-word;
+        }
+        
+        #next-arrow { 
+            position: absolute; 
+            bottom: 12px; 
+            right: 20px; 
+            font-size: 0.8rem; 
+            color: var(--theme-gold); 
+            animation: float 2s infinite ease-in-out; 
+        }
+        
+        /* 阿婆立繪：手機端自適應高度與位置，避免遮擋核心手鍊 */
+        #character-layer { 
+            position: absolute; 
+            bottom: 22%; 
+            left: 25%; 
+            transform: translateX(-50%); 
+            height: 50%; 
+            max-height: 500px; 
+            z-index: 4; 
+            pointer-events: none; 
+        }
+        #character-img { 
+            height: 100%; 
+            opacity: 0; 
+            transform: translateY(20px); 
+            transition: opacity 0.8s ease, transform 0.8s ease; 
+        }
+        
+        /* 核心手鍊圖容器：改用彈性適配，確保在手機與電腦端完全等比例縮放 */
+        #item-container { 
+            position: absolute; 
+            bottom: 25%; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 85vw;          /* 手機端優先使用寬度百分比適配 */
+            max-width: 420px;     /* 電腦端最大寬度限制 */
+            aspect-ratio: 16 / 9; 
+            z-index: 4; 
+            display: none; 
+        }
+        
+        #item-img { 
+            width: 100%; 
+            height: 100%; 
+            opacity: 0; 
+            transition: opacity 1s ease; 
+            display: block; 
+            object-fit: contain; 
+        }
+
+        /* 點擊熱點：保持完全透明，完美适配移動端觸摸 */
+        .hotspot { 
+            position: absolute; 
+            border-radius: 50%; 
+            cursor: pointer; 
+            background: rgba(0, 0, 0, 0); 
+            border: 1px solid transparent;
+            outline: none;
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0); /* 彻底移除手機端點擊藍色高光 */
+        }
+        .hotspot:hover, .hotspot.clicked { 
+            background: rgba(0, 0, 0, 0); 
+            border: 1px solid transparent; 
+            box-shadow: none; 
+        }
+
+        /* 🎯 基於 16:9 容器比例的精確相對坐標 */
+        /* 桔子部分 */
+        #hotspot-tangerine { top: 66%; left: 32%; width: 13%; height: 22%; }
+        /* 黃色珠子部分 */
+        #hotspot-jade { top: 63%; left: 54%; width: 11%; height: 13%; border-radius: 40%; }
+        /* 紅色珠子部分 */
+        #hotspot-redbeads { top: 36%; left: 24.5%; width: 10%; height: 16%; }
+
+        /* 開始按鈕適配 */
+        #action-btn { 
+            position: absolute; 
+            bottom: 30%; 
+            z-index: 5; 
+            padding: 12px 35px; 
+            background: transparent; 
+            color: var(--theme-gold); 
+            border: 1px solid var(--theme-gold); 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 1rem; 
+            font-weight: 300; 
+            letter-spacing: 4px; 
+            transition: all 0.4s ease; 
+        }
+        #action-btn:hover { background: rgba(212, 175, 55, 0.1); box-shadow: 0 0 15px rgba(212,175,55,0.3); }
+
+        @keyframes float { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-4px); opacity: 1; } }
+
+        /* 📱 針對手機豎屏（常見場景）的佈局優化 */
+        @media (max-width: 768px) {
+            #character-layer {
+                left: 50%;     /* 手機端將阿婆移到正中，避免與右邊的手鍊重疊 */
+                bottom: 32%;
+                height: 42%;
+            }
+            #item-container {
+                bottom: 30%;   /* 手鍊在解謎模式下會居中放大，更方便手機手指點擊 */
+                width: 90vw;
+            }
+            #dialogue-box {
+                height: 140px; /* 稍微壓縮手機端對話框高度，給畫面上方留出空間 */
+                padding: 15px 20px;
+            }
+        }
     </style>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600&display=swap">
 </head>
 <body>
 
-    <div id="start-overlay">
-        <h2 style="margin-bottom: 10px;">MindAR 互動體驗</h2>
-        <p style="margin-bottom: 25px; color: #ccc; font-size: 14px;">請點擊下方按鈕以允許開啟鏡頭與音訊</p>
-        <button id="start-btn">開啟 AR 體驗</button>
+<div id="game-stage">
+    <div id="background"></div>
+    <div id="ambient-glow"></div>
+
+    <button id="action-btn" onclick="startAct2()">步入店內</button>
+
+    <div id="item-container">
+        <img id="item-img" src="bracelet_box.png" alt="手鍊">
+        
+        <div id="hotspot-tangerine" class="hotspot" onclick="clickHotspot('tangerine')"></div>
+        <div id="hotspot-jade" class="hotspot" onclick="clickHotspot('jade')"></div>
+        <div id="hotspot-redbeads" class="hotspot" onclick="clickHotspot('redbeads')"></div>
     </div>
 
-    <!-- 调试浮层，确认识别状态，稳定后可删除 -->
-    <div id="debug-log"></div>
+    <div id="character-layer"><img id="character-img" src="grandma_tea.png" alt="阿婆"></div>
 
-    <a-scene 
-        id="ar-scene"
-        mindar-image="imageTargetSrc: ./1.mind;
-                      autoStart: false;
-                      filterMinCF: 0.001;
-                      filterBeta: 0.01;
-                      missTolerance: 10;
-                      warmupTolerance: 2"
-        color-space="sRGB" 
-        renderer="colorManagement: true; physicallyCorrectLights: true"
-        vr-mode-ui="enabled: false" 
-        device-orientation-permission-ui="enabled: false">
+    <div id="dialogue-box" onclick="nextScript()">
+        <div id="speaker-name"></div>
+        <div id="dialogue-text"></div>
+        <div id="next-arrow">◇ 點擊聆聽</div>
+    </div>
+</div>
 
-        <a-assets timeout="10000">
-            <video id="mp4Video"
-                   src="./1.mp4"
-                   loop="true"
-                   playsinline
-                   webkit-playsinline
-                   crossorigin="anonymous">
-            </video>
-        </a-assets>
+<script>
+    const script = [
+        { name: "敘述", text: "一跨進門，滾燙的熱茶香氣便裹挾著淡淡的檀香撲面而來，將外頭的寒雨隔絕在另一個世界。" },
+        { name: "阿婆", text: "「來，孩子。先喝口熱茶，暖暖身子。」" },
+        { name: "我", text: "「謝謝您……（接過茶杯，環顧四周）這裡好安靜，感覺時間都變慢了。」" },
+        { name: "敘述", text: "櫃檯正中央，一束溫暖柔和的光線靜靜垂落。光影下，一個精緻的絲絨托盤裡正躺著一條流光溢彩的手鍊。" },
+        { name: "我", text: "「這條手鍊……好美。上面好像有些不一樣的細節？」" },
+        { name: "提示", text: "【請點擊手鍊上的 橘子、黃色珠子、紅色珠子 進行細緻觀察】" },
+        // 解謎攔截點：阿婆淡出隱藏
+        { name: "阿婆", text: "「呵呵，看來你觀察得很仔細。這條手鍊的每一部分，都有它在等待的緣分。」" },
+        { name: "我", text: "「1300°C 淬鍊的小桔子，溫潤的黃玉珠，還有沉穩的紅瑪瑙……」" },
+        { name: "阿婆", text: "「不差分毫。整條手鍊全長 18.5 厘米，不多不少，正好能完美貼合你此刻的手腕。這便是因緣。」" }
+    ];
 
-        <a-light type="ambient" intensity="3" color="#ffffff"></a-light>
-        <a-light type="directional" intensity="2" position="0 5 0" color="#ffffff"></a-light>
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    let currentLine = 0;
+    let isTyping = false;
+    let puzzleMode = false;
+    let clickedParts = { tangerine: false, jade: false, redbeads: false };
 
-        <a-entity mindar-image-target="targetIndex: 0" video-controller>
-            <a-video
-                src="#mp4Video"
-                width="1.7778"
-                height="1"
-                position="0 0 0"
-                rotation="0 90 0">
-            </a-video>
-        </a-entity>
-    </a-scene>
+    function startAct2() {
+        document.getElementById('action-btn').style.display = 'none';
+        document.getElementById('dialogue-box').style.display = 'block';
+        
+        const img = document.getElementById('character-img');
+        img.style.opacity = '1';
+        img.style.transform = 'translateY(0)';
+        
+        showLine();
+    }
 
-    <script>
-        // 调试日志函数
-        const debugEl = document.querySelector('#debug-log');
-        function log(msg) {
-            console.log(msg);
-            const line = document.createElement('div');
-            line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
-            debugEl.appendChild(line);
-            debugEl.scrollTop = debugEl.scrollHeight;
+    function showLine() {
+        if(currentLine >= script.length) return;
+        
+        if (currentLine === 3) {
+            const container = document.getElementById('item-container');
+            container.style.display = 'block';
+            setTimeout(() => document.getElementById('item-img').style.opacity = '1', 50);
+        }
+        
+        if (currentLine === 6 && !checkPuzzleSolved()) {
+            puzzleMode = true;
+            document.getElementById('next-arrow').style.display = 'none';
+            // 隱藏阿婆，突出手鍊以便手機端操作
+            document.getElementById('character-img').style.opacity = '0';
+            return;
         }
 
-        AFRAME.registerComponent('video-controller', {
-            init: function () {
-                const el = this.el;
-                const video = document.querySelector('#mp4Video');
+        const data = script[currentLine];
+        document.getElementById('speaker-name').innerText = data.name;
+        
+        const textContainer = document.getElementById('dialogue-text');
+        textContainer.innerText = "";
+        let i = 0;
+        isTyping = true;
 
-                el.addEventListener('targetFound', function () {
-                    log("✅ 識別成功，播放影片");
-                    video.muted = false;
-                    if (window._audioCtx && window._audioCtx.state === 'suspended') {
-                        window._audioCtx.resume();
-                    }
-                    video.play().catch(err => log("播放被拦截: " + err));
-                });
-
-                el.addEventListener('targetLost', function () {
-                    log("⚠️ 目標丟失，暫停影片");
-                    video.pause();
-                    video.currentTime = 0;
-                });
+        let timer = setInterval(() => {
+            if (i < data.text.length) {
+                textContainer.innerText += data.text.charAt(i);
+                i++;
+            } else {
+                clearInterval(timer);
+                isTyping = false;
             }
-        });
+        }, 40);
+    }
 
-        const sceneEl      = document.querySelector('#ar-scene');
-        const video        = document.querySelector('#mp4Video');
-        const startBtn     = document.querySelector('#start-btn');
-        const startOverlay = document.querySelector('#start-overlay');
+    function nextScript() {
+        if (isTyping || puzzleMode) return; 
+        currentLine++;
+        if (currentLine < script.length) {
+            showLine();
+        } else {
+            alert("【第二幕 完】 手鍊在你的手腕上散發出微光，第三幕即將開啟...");
+        }
+    }
 
-        let sceneReady = false;
-        sceneEl.addEventListener('loaded', () => {
-            sceneReady = true;
-            log("🎬 场景加载完成");
-        });
+    const hotspotData = {
+        tangerine: "【核心吊墜：陶瓷小桔子】\n經受過 1300°C 高溫窯燒淬鍊的泥土，化為永不褪色的亮桔色。這是一份「萬事皆桔、生活回甘」的沉甸甸祝福。",
+        jade: "【核心配珠：溫潤黃玉珠】\n在深邃的紅瑪瑙中，這一顆金黃色的玉珠宛如破曉的晨光。阿婆說它象徵著守護內心永不熄滅的希望與溫暖。",
+        redbeads: "【主體材質：質地深邃的紅瑪瑙】\n一顆顆圓潤飽滿的紅瑪瑙環繞成圈，觸手溫涼。具有安神去躁、辟邪祈福的東方意蘊，為忙碌焦慮的都市生活帶來平靜。"
+    };
 
-        // MindAR 就绪 / 错误事件
-        sceneEl.addEventListener('arReady', () => log("📷 摄像头就绪，请对准识别图"));
-        sceneEl.addEventListener('arError', (e) => log("❌ AR错误: " + JSON.stringify(e.detail)));
+    function clickHotspot(part) {
+        if (!puzzleMode) return;
 
-        startBtn.addEventListener('click', function () {
-            log("👆 按钮点击，启动中...");
+        clickedParts[part] = true;
+        document.getElementById(`hotspot-${part}`).classList.add('clicked');
 
-            try {
-                window._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                window._audioCtx.resume();
-                const silentBuffer = window._audioCtx.createBuffer(1, 1, 22050);
-                const source = window._audioCtx.createBufferSource();
-                source.buffer = silentBuffer;
-                source.connect(window._audioCtx.destination);
-                source.start(0);
-                log("🔊 AudioContext 已解锁");
-            } catch(e) { log("AudioContext 失败: " + e); }
+        document.getElementById('speaker-name').innerText = "觀察細節";
+        const textContainer = document.getElementById('dialogue-text');
+        textContainer.innerText = hotspotData[part];
 
-            video.pause();
-            video.currentTime = 0;
-            video.muted = false;
+        if (checkPuzzleSolved()) {
+            puzzleMode = false;
+            setTimeout(() => {
+                // 阿婆重新出現在原位
+                document.getElementById('character-img').style.opacity = '1';
+                document.getElementById('next-arrow').style.display = 'block';
+                currentLine = 6;
+                showLine();
+            }, 3000); 
+        }
+    }
 
-            startOverlay.classList.add('hidden');
-
-            const tryStart = () => {
-                const mindARSystem = sceneEl.systems["mindar-image-system"];
-                if (mindARSystem) {
-                    log("🚀 MindAR 启动");
-                    mindARSystem.start();
-                } else {
-                    log("⏳ 等待 MindAR system...");
-                    setTimeout(tryStart, 300);
-                }
-            };
-
-            sceneReady ? tryStart() : sceneEl.addEventListener('loaded', tryStart, { once: true });
-        });
-
-        document.addEventListener("WeixinJSBridgeReady", function () {
-            try {
-                window._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                window._audioCtx.resume();
-            } catch(e) {}
-        }, false);
-    </script>
+    function checkPuzzleSolved() {
+        return clickedParts.tangerine && clickedParts.jade && clickedParts.redbeads;
+    }
+</script>
 </body>
 </html>
